@@ -938,7 +938,7 @@ class Shell:
 
 
 _SAHYA_ORANGE = "#ff4f00"
-# Full logo for wide terminals
+# Full logo for wide terminals (fits in 80 columns)
 _LOGO_FULL = Text.assemble(
     (r"███████╗ █████╗ ██╗  ██╗██╗   ██╗ █████╗     ██████╗ ██████╗ ██████╗ ███████╗" + "\n", _SAHYA_ORANGE),
     (r"██╔════╝██╔══██╗██║  ██║╚██╗ ██╔╝██╔══██╗   ██╔════╝██╔═══██╗██╔══██╗██╔════╝" + "\n", _SAHYA_ORANGE),
@@ -947,10 +947,44 @@ _LOGO_FULL = Text.assemble(
     (r"███████║██║  ██║██║  ██║   ██║   ██║  ██║   ╚██████╗╚██████╔╝██████╔╝███████╗" + "\n", _SAHYA_ORANGE),
     (r"╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝    ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝" + "\n", _SAHYA_ORANGE),
 )
-# Compact robot icon for narrow terminals
+# Medium logo for medium terminals (fits in 60 columns)
+_LOGO_MEDIUM = Text.assemble(
+    (r"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓" + "\n", _SAHYA_ORANGE),
+    (r"┃  ███████╗ █████╗ ██╗  ██╗██╗   ██╗ █████╗               ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ██╔════╝██╔══██╗██║  ██║╚██╗ ██╔╝██╔══██╗              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ███████╗███████║███████║ ╚████╔╝ ███████║              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ╚════██║██╔══██║██╔══██║  ╚██╔╝  ██╔══██║              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ███████║██║  ██║██║  ██║   ██║   ██║  ██║              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃           ██████╗ ██████╗ ██████╗ ███████╗              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃          ██╔════╝██╔═══██╗██╔══██╗██╔════╝              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃          ██║     ██║   ██║██║  ██║█████╗                ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃          ██║     ██║   ██║██║  ██║██╔══╝                ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃          ╚██████╗╚██████╔╝██████╔╝███████╗              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃           ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛" + "\n", _SAHYA_ORANGE),
+)
+# Compact logo for narrow terminals
 _LOGO_COMPACT = Text.assemble(
-    (r"  🤖  " + "\n", _SAHYA_ORANGE),
-    (r" Sahya " + "\n", _SAHYA_ORANGE),
+    (r"┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓" + "\n", _SAHYA_ORANGE),
+    (r"┃  ███████╗ █████╗ ██╗   ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ██╔════╝██╔══██╗╚██╗  ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ███████╗███████║ ╚██╗ ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ╚════██║██╔══██║  ██║ ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ███████║██║  ██║  ██║ ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃  ╚══════╝╚═╝  ╚═╝  ╚═╝ ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃      ██████╗  ██████╗  ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃      ██╔═══╝  ██╔══╝   ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃      ██████╗  ██║      ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃      ╚═════╝  ╚═╝      ┃" + "\n", _SAHYA_ORANGE),
+    (r"┗━━━━━━━━━━━━━━━━━━━━━━━━━━┛" + "\n", _SAHYA_ORANGE),
+)
+# Minimal logo for very narrow terminals
+_LOGO_MINIMAL = Text.assemble(
+    (r"┏━━━━━━━━━━━┓" + "\n", _SAHYA_ORANGE),
+    (r"┃   Sahya   ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃    Code   ┃" + "\n", _SAHYA_ORANGE),
+    (r"┗━━━━━━━━━━━┛" + "\n", _SAHYA_ORANGE),
 )
 
 
@@ -977,7 +1011,14 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
     # Choose logo based on terminal width
     import shutil
     term_width = shutil.get_terminal_size().columns
-    logo = _LOGO_COMPACT if term_width < 80 else _LOGO_FULL
+    if term_width >= 80:
+        logo = _LOGO_FULL
+    elif term_width >= 60:
+        logo = _LOGO_MEDIUM
+    elif term_width >= 30:
+        logo = _LOGO_COMPACT
+    else:
+        logo = _LOGO_MINIMAL
 
     # Stack logo and welcome text vertically
     rows: list[RenderableType] = [logo, Text("")]

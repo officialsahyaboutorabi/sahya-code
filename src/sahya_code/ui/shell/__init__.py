@@ -930,14 +930,13 @@ class Shell:
         self._background_tasks.clear()
 
 
-_KIMI_BLUE = "dodger_blue1"
 _SAHYA_BLUE = "dodger_blue1"
 _LOGO = Text.assemble(
-    (r"    ____________________  ___  ________       _________________________________" + "\n", _SAHYA_BLUE),
-    (r"    __  ___/__    |__  / / / \/ /__    |      __  ____/_  __ \__  __ \__  ____/" + "\n", _SAHYA_BLUE),
-    (r"    _____ \__  /| |_  /_/ /__  /__  /| |      _  /    _  / / /_  / / /_  __/   " + "\n", _SAHYA_BLUE),
-    (r"    ____/ /_  ___ |  __  / _  / _  ___ |      / /___  / /_/ /_  /_/ /_  /___   " + "\n", _SAHYA_BLUE),
-    (r"    /____/ /_/  |_/_/ /_/  /_/  /_/  |_|      \____/  \____/ /_____/ /_____/   ", _SAHYA_BLUE),
+    (r"   ███████  █████  ██   ██ ██████   ██████  " + "\n", _SAHYA_BLUE),
+    (r"   ██      ██   ██ ██   ██ ██   ██ ██    ██ " + "\n", _SAHYA_BLUE),
+    (r"   ███████ ███████ ███████ ██████  ██    ██ " + "\n", _SAHYA_BLUE),
+    (r"        ██ ██   ██ ██   ██ ██   ██ ██    ██ " + "\n", _SAHYA_BLUE),
+    (r"   ███████ ██   ██ ██   ██ ██   ██  ██████  " + "\n", _SAHYA_BLUE),
 )
 
 
@@ -981,7 +980,7 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
     console.print(
         Panel(
             Group(*rows),
-            border_style=_KIMI_BLUE,
+            border_style=_SAHYA_BLUE,
             expand=False,
             padding=(1, 2),
         )

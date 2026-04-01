@@ -51,8 +51,8 @@ default_model = "default"
 
 [models.default]
 provider = "sahya"
-model = "gpt-4o"
-max_context_size = 128000
+model = "kimi-k2.5"
+max_context_size = 256000
 capabilities = ["image_in", "thinking"]
 
 [providers.sahya]

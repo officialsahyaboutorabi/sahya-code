@@ -30,8 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Configuration
 
 #### Default Provider
-- Type: `openai_legacy` (OpenAI-compatible API)
+- Type: `openai_legacy` (OpenAI-compatible API for LiteLLM)
 - Endpoint: `https://llm.nexiant.ai`
+- Default Model: `kimi-k2.5`
 - Authentication: API key via `SAHYA_API_KEY`
 
 #### Environment Variables

@@ -227,11 +227,25 @@ def get_config_file() -> Path:
 
 
 def get_default_config() -> Config:
-    """Get the default configuration."""
+    """Get the default configuration with LiteLLM endpoint."""
+    from pydantic import SecretStr
     return Config(
-        default_model="",
-        models={},
-        providers={},
+        default_model="default",
+        models={
+            "default": LLMModel(
+                provider="sahya",
+                model="kimi-k2.5",
+                max_context_size=256000,
+                capabilities={"image_in", "thinking"},
+            )
+        },
+        providers={
+            "sahya": LLMProvider(
+                type="openai_legacy",
+                base_url="https://llm.nexiant.ai",
+                api_key=SecretStr(""),
+            )
+        },
         services=Services(),
     )
 

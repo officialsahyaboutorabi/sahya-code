@@ -931,11 +931,14 @@ class Shell:
 
 
 _KIMI_BLUE = "dodger_blue1"
+_SAHYA_BLUE = "dodger_blue1"
+_SAHYA_CYAN = "cyan1"
+_SAHYA_PURPLE = "purple"
 _LOGO = f"""\
-[{_KIMI_BLUE}]\
-▐█▛█▛█▌
-▐█████▌\
-[{_KIMI_BLUE}]\
+[{_SAHYA_CYAN}]╔═╗┌─┐┬ ┬┬ ┬┌─┐
+[{_SAHYA_BLUE}]╚═╗├─┤├─┤├─┤├─┤
+[{_SAHYA_PURPLE}]╚═╝┴ ┴┴ ┴┴ ┴┴ ┴
+[/{_SAHYA_PURPLE}]\
 """
 
 

@@ -1,0 +1,42 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from pydantic import BaseModel, Field, ValidationError
+
+from sahya_code.utils.io import atomic_json_write
+from sahya_code.utils.logging import logger
+
+STATE_FILE_NAME = "state.json"
+
+
+class ApprovalStateData(BaseModel):
+    yolo: bool = False
+    auto_approve_actions: set[str] = Field(default_factory=set)
+
+
+class SessionState(BaseModel):
+    version: int = 1
+    approval: ApprovalStateData = Field(default_factory=ApprovalStateData)
+    additional_dirs: list[str] = Field(default_factory=list)
+    plan_mode: bool = False
+    plan_session_id: str | None = None
+    plan_slug: str | None = None
+
+
+def load_session_state(session_dir: Path) -> SessionState:
+    state_file = session_dir / STATE_FILE_NAME
+    if not state_file.exists():
+        return SessionState()
+    try:
+        with open(state_file, encoding="utf-8") as f:
+            return SessionState.model_validate(json.load(f))
+    except (json.JSONDecodeError, ValidationError, UnicodeDecodeError):
+        logger.warning("Corrupted state file, using defaults: {path}", path=state_file)
+        return SessionState()
+
+
+def save_session_state(state: SessionState, session_dir: Path) -> None:
+    state_file = session_dir / STATE_FILE_NAME
+    atomic_json_write(state.model_dump(mode="json"), state_file)

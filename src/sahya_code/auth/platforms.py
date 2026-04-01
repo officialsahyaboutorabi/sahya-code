@@ -306,8 +306,12 @@ def is_openai_legacy_provider_key(key: str) -> bool:
 
 
 def openai_legacy_model_key(provider_key: str, model_id: str) -> str:
-    """Generate a unique model key for openai_legacy providers."""
-    return f"{provider_key}:{model_id}"
+    """Generate a unique model key for openai_legacy providers.
+    
+    For LiteLLM and similar, use just the model ID as the key
+    to keep things simple and match user's expectations.
+    """
+    return model_id
 
 
 async def refresh_openai_legacy_models(config: Config) -> bool:

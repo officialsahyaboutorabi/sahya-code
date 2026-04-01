@@ -5,6 +5,17 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-01
+
+### Changed
+- **New UI Design**: Replaced chat input with opencode-inspired style
+  - Bordered input box with rounded corners (╭─╮│╰─╯)
+  - Modern prompt symbols: ❯ for normal, ◉ for thinking/plan mode
+  - Restyled control bar at bottom with color-coded sections:
+    - Agent (blue), Model (purple), Mode (amber)
+  - Cleaner layout matching modern terminal UI trends
+  - New theme classes for enhanced styling
+
 ## [1.0.10] - 2026-04-01
 
 ### Added

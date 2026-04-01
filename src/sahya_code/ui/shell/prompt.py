@@ -75,10 +75,21 @@ AttachmentCache = prompt_placeholders.AttachmentCache
 CachedAttachment = prompt_placeholders.CachedAttachment
 _parse_attachment_kind = prompt_placeholders.parse_attachment_kind
 
-PROMPT_SYMBOL = "✨"
-PROMPT_SYMBOL_SHELL = "$"
-PROMPT_SYMBOL_THINKING = "💫"
-PROMPT_SYMBOL_PLAN = "📋"
+# Opencode-style prompt symbols
+PROMPT_SYMBOL = "❯"
+PROMPT_SYMBOL_SHELL = "❯"
+PROMPT_SYMBOL_THINKING = "◉"
+PROMPT_SYMBOL_PLAN = "◉"
+
+# Box drawing characters for opencode-style input
+BOX_CORNER_TL = "╭"
+BOX_CORNER_TR = "╮"
+BOX_CORNER_BL = "╰"
+BOX_CORNER_BR = "╯"
+BOX_HORIZONTAL = "─"
+BOX_VERTICAL = "│"
+BOX_T_LEFT = "├"
+BOX_T_RIGHT = "┤"
 
 
 class SlashCommandCompleter(Completer):
@@ -1601,17 +1612,42 @@ class CustomPromptSession:
         columns = app.output.get_size().columns if app is not None else 80
         fragments: FormattedText = FormattedText()
         body = self._render_agent_prompt_body(columns)
-        if body:
-            fragments.extend(body)
-            if not body[-1][1].endswith("\n"):
-                fragments.append(("", "\n"))
+        
         if self._active_modal_delegate() is not None:
+            if body:
+                fragments.extend(body)
+                if not body[-1][1].endswith("\n"):
+                    fragments.append(("", "\n"))
             return fragments
+        
+        # Opencode-style bordered input box for shell mode
+        content_width = max(0, columns - 2)  # Account for vertical borders
+        
+        # Top border with shell mode indicator
+        mode_indicator = " shell "
+        fragments.append(("class:input-box.border", BOX_CORNER_TL))
+        fragments.append(("class:control-bar.mode", mode_indicator))
+        fragments.append(("class:input-box.border", BOX_HORIZONTAL * max(0, content_width - len(mode_indicator))))
+        fragments.append(("class:input-box.border", BOX_CORNER_TR))
+        fragments.append(("", "\n"))
+        
+        # Body content area (if any)
         if body:
-            fragments.append(("", "\n"))
-            fragments.append(("class:running-prompt-separator", "─" * max(0, columns)))
-            fragments.append(("", "\n"))
-        fragments.append(("bold", f"{PROMPT_SYMBOL_SHELL} "))
+            for style, text in body:
+                lines = text.split("\n")
+                for line in lines:
+                    if line:
+                        truncated = line[:content_width]
+                        padding = " " * max(0, content_width - len(truncated))
+                        fragments.append(("class:input-box.border", BOX_VERTICAL))
+                        fragments.append((style, truncated + padding))
+                        fragments.append(("class:input-box.border", BOX_VERTICAL))
+                        fragments.append(("", "\n"))
+        
+        # Input line with prompt symbol inside the box
+        fragments.append(("class:input-box.border", BOX_VERTICAL))
+        fragments.append(("class:prompt-symbol-shell", f"{PROMPT_SYMBOL_SHELL} "))
+        
         return fragments
 
     def _open_in_external_editor(self, event: KeyPressEvent) -> None:
@@ -1733,17 +1769,40 @@ class CustomPromptSession:
         app = get_app_or_none()
         columns = app.output.get_size().columns if app is not None else 80
         fragments: FormattedText = FormattedText()
+        
+        # Render body content (status block or delegate content)
         body = self._render_agent_prompt_body(columns)
-        if body:
-            fragments.extend(body)
-            if not body[-1][1].endswith("\n"):
-                fragments.append(("", "\n"))
+        
         if self._active_modal_delegate() is not None:
+            if body:
+                fragments.extend(body)
             return fragments
+        
+        # Opencode-style bordered input box
+        content_width = max(0, columns - 2)  # Account for vertical borders
+        
+        # Top border with rounded corners
+        fragments.append(("class:input-box.border", f"{BOX_CORNER_TL}{BOX_HORIZONTAL * content_width}{BOX_CORNER_TR}"))
         fragments.append(("", "\n"))
-        fragments.append(("class:running-prompt-separator", "─" * max(0, columns)))
-        fragments.append(("", "\n"))
+        
+        # Body content area (if any)
+        if body:
+            for style, text in body:
+                # Wrap each line of body content with vertical borders
+                lines = text.split("\n")
+                for line in lines:
+                    if line:
+                        truncated = line[:content_width]
+                        padding = " " * max(0, content_width - len(truncated))
+                        fragments.append(("class:input-box.border", BOX_VERTICAL))
+                        fragments.append((style, truncated + padding))
+                        fragments.append(("class:input-box.border", BOX_VERTICAL))
+                        fragments.append(("", "\n"))
+        
+        # Input line with prompt symbol inside the box
+        fragments.append(("class:input-box.border", BOX_VERTICAL))
         fragments.extend(self._render_agent_prompt_label())
+        
         return fragments
 
     def _render_agent_prompt_body(self, columns: int) -> FormattedText:
@@ -1762,11 +1821,13 @@ class CustomPromptSession:
         return to_formatted_text(block)
 
     def _render_agent_prompt_label(self) -> FormattedText:
+        """Render the prompt symbol with opencode-style styling."""
         status = self._status_provider()
         if status.plan_mode:
-            return FormattedText([(get_toolbar_colors().plan_prompt, f"{PROMPT_SYMBOL_PLAN} ")])
-        symbol = PROMPT_SYMBOL_THINKING if self._thinking else PROMPT_SYMBOL
-        return FormattedText([("", f"{symbol} ")])
+            return FormattedText([("class:prompt-symbol-plan", f"{PROMPT_SYMBOL_PLAN} ")])
+        if self._thinking:
+            return FormattedText([("class:prompt-symbol-thinking", f"{PROMPT_SYMBOL_THINKING} ")])
+        return FormattedText([("class:prompt-symbol", f"{PROMPT_SYMBOL} ")])
 
     def __enter__(self) -> CustomPromptSession:
         if self._status_refresh_task is not None and not self._status_refresh_task.done():
@@ -1993,88 +2054,97 @@ class CustomPromptSession:
         fragments: list[tuple[str, str]] = []
         tc = get_toolbar_colors()
 
-        fragments.append((tc.separator, "─" * columns))
-        fragments.append(("", "\n"))
-
-        remaining = columns
-
         # Time-based tip rotation (every 30 s, independent of user submissions)
         now = time.monotonic()
         if now - self._last_tip_rotate_time >= _TIP_ROTATE_INTERVAL:
             self._tip_rotation_index += 1
             self._last_tip_rotate_time = now
 
-        # Status flags: yolo / plan
+        # Opencode-style control bar at the bottom
+        # Layout: [agent] [model] [variant] [mode] | git [branch] | tips | [context]
+        
+        remaining = columns
+        
+        # Line 1: Control bar with opencode-style layout
         status = self._status_provider()
+        
+        # Agent indicator (with yolo/plan badges)
+        agent_parts = []
         if status.yolo_enabled:
-            fragments.extend([(tc.yolo_label, "yolo"), ("", "  ")])
-            remaining -= 6  # "yolo" = 4, "  " = 2
+            agent_parts.append(("class:control-bar.agent", "yolo"))
+            agent_parts.append(("class:control-bar.separator", "/"))
         if status.plan_mode:
-            fragments.extend([(tc.plan_label, "plan"), ("", "  ")])
-            remaining -= 6
-
-        # Mode indicator (agent / shell) + model name + thinking indicator.
-        # Degrade gracefully on narrow terminals:
-        #   full: "agent (model-name ○)"  → mid: "agent ○"  → bare: "agent"
-        mode = str(self._mode)
-        if self._mode == PromptMode.AGENT and self._model_name:
-            thinking_dot = "●" if self._thinking else "○"
-            mode_full = f"{mode} ({self._model_name} {thinking_dot})"
-            mode_mid = f"{mode} {thinking_dot}"
-            if _display_width(mode_full) <= remaining - 2:
-                mode = mode_full
-            elif _display_width(mode_mid) <= remaining - 2:
-                mode = mode_mid
-            # else: keep bare mode name — model_name and dot are both dropped
-        fragments.extend([("", mode), ("", "  ")])
-        remaining -= _display_width(mode) + 2
-
-        # CWD (truncated from left) + git branch with status badge
-        # Degrade gracefully on narrow terminals: full → cwd-only → truncated cwd → skip
-        cwd = _truncate_left(_shorten_cwd(str(KaosPath.cwd())), _MAX_CWD_COLS)
+            agent_parts.append(("class:control-bar.agent", "plan"))
+            agent_parts.append(("class:control-bar.separator", "/"))
+        agent_parts.append(("class:control-bar.agent", "agent"))
+        
+        agent_text = "".join(text for _, text in agent_parts)
+        agent_width = _display_width(agent_text)
+        if remaining >= agent_width + 2:
+            for style, text in agent_parts:
+                fragments.append((style, text))
+            fragments.append(("", "  "))
+            remaining -= agent_width + 2
+        
+        # Model name
+        if self._model_name:
+            model_text = self._model_name
+            # Add thinking indicator
+            if self._thinking:
+                model_text += " ●"
+            model_width = _display_width(model_text)
+            if remaining >= model_width + 2:
+                fragments.append(("class:control-bar.model", model_text))
+                fragments.append(("", "  "))
+                remaining -= model_width + 2
+        
+        # Mode indicator
+        mode_text = str(self._mode)
+        mode_width = _display_width(mode_text)
+        if remaining >= mode_width + 2:
+            fragments.append(("class:control-bar.mode", mode_text))
+            fragments.append(("", "  "))
+            remaining -= mode_width + 2
+        
+        # Git branch with status
         branch = _get_git_branch()
         if branch:
             dirty, ahead, behind = _get_git_status()
             branch = _truncate_right(branch, _MAX_BRANCH_COLS)
             badge = _format_git_badge(branch, dirty, ahead, behind)
-            cwd_text = f"{cwd}  {badge}"
-        else:
-            cwd_text = cwd
-        cwd_w = _display_width(cwd_text)
-        if cwd_w > remaining - 2:
-            cwd_text = cwd  # drop badge
-            cwd_w = _display_width(cwd_text)
-        if cwd_w > remaining - 2:
-            cwd_text = _truncate_right(cwd, max(0, remaining - 2))
-            cwd_w = _display_width(cwd_text)
-        if cwd_text and remaining >= cwd_w + 2:
-            fragments.extend([(tc.cwd, cwd_text), ("", "  ")])
-            remaining -= cwd_w + 2
-
-        # Active background bash task count
+            badge_width = _display_width(badge)
+            if remaining >= badge_width + 2:
+                fragments.append((tc.cwd, badge))
+                fragments.append(("", "  "))
+                remaining -= badge_width + 2
+        
+        # Background tasks indicator
         bg_count = (
             self._background_task_count_provider() if self._background_task_count_provider else 0
         )
         if bg_count > 0:
-            bg_text = f"⚙ bash: {bg_count}"
+            bg_text = f"⚙ {bg_count}"
             bg_width = _display_width(bg_text)
             if remaining >= bg_width + 2:
-                fragments.extend([(tc.bg_tasks, bg_text), ("", "  ")])
+                fragments.append((tc.bg_tasks, bg_text))
+                fragments.append(("", "  "))
                 remaining -= bg_width + 2
-
-        # Tips fill remaining space on line 1
+        
+        # Tips
         tip_text = self._get_two_rotating_tips()
         if tip_text and _display_width(tip_text) > remaining:
             tip_text = self._get_one_rotating_tip()
-        if tip_text and _display_width(tip_text) <= remaining:
-            fragments.append((tc.tip, tip_text))
-
-        # ── line 2: toast (left) + context (right) — always rendered ──────
+        if tip_text:
+            tip_width = _display_width(tip_text)
+            if remaining >= tip_width:
+                fragments.append((tc.tip, tip_text))
+                remaining -= tip_width
+        
+        # Line 2: Context status (right-aligned)
         fragments.append(("", "\n"))
-
         right_text = self._render_right_span(status)
         right_width = _display_width(right_text)
-
+        
         left_toast = _current_toast("left")
         if left_toast is not None:
             max_left = max(0, columns - right_width - 2)
@@ -2088,7 +2158,7 @@ class CustomPromptSession:
                 left_width = 0
         else:
             left_width = 0
-
+        
         fragments.append(("", " " * max(0, columns - left_width - right_width)))
         fragments.append(("", right_text))
 

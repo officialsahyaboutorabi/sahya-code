@@ -2,6 +2,45 @@
 
 This document tracks major development milestones and architectural decisions.
 
+## 2026-04-01 - v1.1.0 Release
+
+### Completed Work
+
+#### 1. Opencode-Style Chat Input UI
+**Design Inspiration:** https://github.com/anomalyco/opencode
+
+**Visual Changes:**
+- **Bordered Input Box**: Rounded corners using box-drawing characters (╭─╮│╰─╯)
+- **Modern Prompt Symbols**: 
+  - `❯` for normal input
+  - `◉` for thinking/plan mode
+  - Shell mode shows "shell" label in top border
+- **Control Bar**: Restyled bottom toolbar with color-coded sections:
+  - Agent indicator (blue)
+  - Model name (purple)
+  - Mode indicator (amber)
+  - Git branch with status badges
+  - Background task count
+  - Context usage (right-aligned)
+
+**Technical Implementation:**
+- New theme classes in `theme.py`:
+  - `input-box.border`, `input-box.border-focus`
+  - `prompt-symbol-*` for different modes
+  - `control-bar.*` for the bottom control bar
+- Modified `prompt.py`:
+  - Added box drawing constants
+  - Updated `_render_agent_prompt_message()` for bordered box
+  - Updated `_render_shell_prompt_message()` with mode label
+  - Restyled `_render_bottom_toolbar()` as control bar
+  - New `_render_agent_prompt_label()` with color-coded symbols
+
+**Files Modified:**
+- `src/sahya_code/ui/theme.py` - New color styles
+- `src/sahya_code/ui/shell/prompt.py` - New rendering logic
+
+---
+
 ## 2026-04-01 - v1.0.10 Release
 
 ### Completed Work

@@ -5,6 +5,12 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-04-01
+
+### Added
+- `sahya-code update` command to easily upgrade to the latest version
+- Uses `uv tool upgrade` if available, falls back to `pip install -U`
+
 ## [1.0.2] - 2026-04-01
 
 ### Added

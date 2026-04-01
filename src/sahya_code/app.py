@@ -493,7 +493,7 @@ class SahyaCode:
                 name="\nTip",
                 value=(
                     "Spot a bug or have feedback? Type /feedback right in this session"
-                    " — every report makes Kimi better."
+                    " — every report makes Sahya better."
                 ),
                 level=WelcomeInfoItem.Level.INFO,
             )

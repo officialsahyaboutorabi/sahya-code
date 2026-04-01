@@ -957,14 +957,9 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
     head = Text.from_markup("[bold]Welcome to Sahya Code CLI[/bold]")
     help_text = Text.from_markup("[grey50]Send /help for help information.[/grey50]")
 
-    # Use Table for precise width control
-    logo = _LOGO
-    table = Table(show_header=False, show_edge=False, box=None, padding=(0, 1), expand=False)
-    table.add_column(justify="left")
-    table.add_column(justify="left")
-    table.add_row(logo, Group(head, help_text))
-
-    rows: list[RenderableType] = [table]
+    # Stack logo and welcome text vertically
+    rows: list[RenderableType] = [_LOGO, Text("")]
+    rows.append(Group(head, help_text))
 
     if info_items:
         rows.append(Text(""))  # empty line

@@ -10,6 +10,7 @@ from kosong.chat_provider import ChatProvider
 from pydantic import SecretStr
 
 from sahya_code.constant import USER_AGENT
+from sahya_code.utils.logging import logger
 
 if TYPE_CHECKING:
     from sahya_code.auth.oauth import OAuthManager
@@ -227,10 +228,29 @@ def create_llm(
     capabilities = derive_model_capabilities(model)
 
     # Apply thinking if specified or if model always requires thinking
+    # Note: Some providers (like LiteLLM) may report thinking support but not
+    # actually support the reasoning_effort parameter. We handle this gracefully.
     if "always_thinking" in capabilities or (thinking is True and "thinking" in capabilities):
-        chat_provider = chat_provider.with_thinking("high")
+        try:
+            chat_provider = chat_provider.with_thinking("high")
+        except Exception as exc:
+            # Log warning but don't fail - provider may not support reasoning_effort
+            logger.warning(
+                "Failed to enable thinking for {model}: {error}. "
+                "Provider may not support reasoning_effort parameter.",
+                model=model.model,
+                error=exc,
+            )
     elif thinking is False:
-        chat_provider = chat_provider.with_thinking("off")
+        try:
+            chat_provider = chat_provider.with_thinking("off")
+        except Exception as exc:
+            # Log warning but don't fail
+            logger.debug(
+                "Failed to disable thinking for {model}: {error}",
+                model=model.model,
+                error=exc,
+            )
     # If thinking is None and model doesn't always think, leave as-is (default behavior)
 
     return LLM(

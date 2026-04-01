@@ -26,10 +26,11 @@ class ModelInfo(BaseModel):
     def capabilities(self) -> set[ModelCapability]:
         """Derive capabilities from model info."""
         caps: set[ModelCapability] = set()
-        # NOTE: Temporarily disabled - LiteLLM reports supports_reasoning=true 
-        # but doesn't support reasoning_effort parameter for kimi-k2.5
-        # if self.supports_reasoning:
-        #     caps.add("thinking")
+        # Enable thinking for models that support reasoning
+        # Note: LiteLLM reports supports_reasoning=true but may not support
+        # the reasoning_effort parameter. The LLM layer handles this gracefully.
+        if self.supports_reasoning:
+            caps.add("thinking")
         # Models with "thinking" in name are always-thinking
         if "thinking" in self.id.lower():
             caps.update(("thinking", "always_thinking"))

@@ -855,6 +855,44 @@ def logout(
         raise typer.Exit(code=1)
 
 
+@cli.command()
+def update() -> None:
+    """Update Sahya Code to the latest version."""
+    import subprocess
+    import sys
+
+    from rich.console import Console
+
+    console = Console()
+    console.print("[blue]Updating Sahya Code...[/blue]")
+
+    # Try uv first, then pip
+    try:
+        result = subprocess.run(
+            ["uv", "tool", "upgrade", "sahya-code"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        console.print("[green]✅ Updated successfully with uv![/green]")
+        console.print(result.stdout)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Fall back to pip
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-U", "sahya-code"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            console.print("[green]✅ Updated successfully with pip![/green]")
+            console.print(result.stdout)
+        except subprocess.CalledProcessError as e:
+            console.print("[red]❌ Update failed:[/red]")
+            console.print(e.stderr)
+            raise typer.Exit(code=1)
+
+
 @cli.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def term(
     ctx: typer.Context,

@@ -156,16 +156,16 @@ install_from_local() {
 # Setup TUI dependencies
 setup_tui() {
   if [ "$SKIP_TUI" = true ]; then
-    print_warning "Skipping TUI setup"
+    print_warning "Skipping TUI setup (--skip-tui was specified)"
     return
   fi
 
-  print_info "Setting up TUI (Node.js) dependencies..."
+  print_info "Setting up TUI (Terminal User Interface)..."
   
   # Check for Node.js
   if ! command -v node >/dev/null 2>&1; then
     print_warning "Node.js not found. TUI will not be available."
-    print_info "To install Node.js:"
+    print_info "To use the TUI, install Node.js 18+:"
     print_info "  macOS:    brew install node"
     print_info "  Ubuntu:   sudo apt-get install nodejs npm"
     print_info "  Or visit: https://nodejs.org/"
@@ -175,25 +175,46 @@ setup_tui() {
   NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
   if [ "$NODE_VERSION" -lt 18 ]; then
     print_warning "Node.js 18+ required for TUI. Current version: $(node --version)"
+    print_info "Please upgrade Node.js to use the TUI"
     return
   fi
   
   print_success "Node.js $(node --version) is installed"
   
+  # Find TUI directory based on install mode
+  local TUI_DIR=""
+  
+  if [ "$INSTALL_MODE" = "local" ]; then
+    # Local install - TUI is in the source directory
+    TUI_DIR="${SCRIPT_DIR}/src/sahya_code/tui"
+  else
+    # PyPI install - TUI should be in the package directory
+    # Try to find the package location
+    local PACKAGE_DIR=$(uv run python -c "import sahya_code; print(sahya_code.__path__[0])" 2>/dev/null || echo "")
+    if [ -n "$PACKAGE_DIR" ]; then
+      TUI_DIR="${PACKAGE_DIR}/tui"
+    fi
+  fi
+  
   # Install TUI dependencies
-  TUI_DIR="${SCRIPT_DIR}/src/sahya_code/tui"
   if [ -d "$TUI_DIR" ]; then
-    print_info "Installing TUI dependencies..."
+    print_info "Installing TUI dependencies in ${TUI_DIR}..."
     cd "$TUI_DIR"
     
     if [ -f "package.json" ]; then
-      npm install
-      print_success "TUI dependencies installed"
+      if npm install; then
+        print_success "TUI dependencies installed successfully"
+        print_info "You can now use: sahya-code --tui"
+      else
+        print_error "Failed to install TUI dependencies"
+        print_info "You can try manually: cd ${TUI_DIR} && npm install"
+      fi
     else
-      print_warning "TUI package.json not found"
+      print_warning "TUI package.json not found at ${TUI_DIR}"
     fi
   else
     print_warning "TUI directory not found at ${TUI_DIR}"
+    print_info "TUI may not be included in this installation method"
   fi
 }
 
@@ -254,6 +275,15 @@ main() {
   # Setup config
   setup_config
   
+  # Check TUI status for final message
+  local TUI_STATUS=""
+  if [ "$SKIP_TUI" = false ] && command -v node >/dev/null 2>&1; then
+    local NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -ge 18 ]; then
+      TUI_STATUS="available"
+    fi
+  fi
+  
   # Final message
   echo ""
   echo -e "${GREEN}====================================${NC}"
@@ -261,10 +291,21 @@ main() {
   echo -e "${GREEN}====================================${NC}"
   echo ""
   echo "Usage:"
-  echo "  sahya-code                    # Start interactive mode"
+  echo "  sahya-code                    # Start Shell UI (default)"
+  if [ "$TUI_STATUS" = "available" ]; then
+    echo "  sahya-code --tui              # Start TUI (opencode-style)"
+    echo "  sahya-code tui                # Alternative TUI command"
+  fi
   echo "  sahya-code 'Your prompt'      # Run with a prompt"
-  echo "  sahya-code tui                # Start TUI (if Node.js is installed)"
-  echo "  sahya-code --help             # Show help"
+  echo "  sahya-code --help             # Show all options"
+  echo ""
+  echo "UI Modes:"
+  echo "  Shell UI (default)  - Inline terminal interface"
+  if [ "$TUI_STATUS" = "available" ]; then
+    echo "  TUI                 - Full-screen opencode-style interface"
+  else
+    echo "  TUI                 - Not installed (requires Node.js 18+)"
+  fi
   echo ""
   echo "Configuration:"
   echo "  Config file: ~/.config/sahya/config.toml"

@@ -37,6 +37,10 @@ Sahya Code is a CLI-based AI coding agent forked from [kimi-cli](https://github.
   - `vertexai` - Google Vertex AI
 - **Custom Configuration:** Pre-configured for LiteLLM endpoint
 - **Capabilities:** Model capability detection (image_in, video_in, thinking, always_thinking)
+- **Thinking Support:** Extended thinking/reasoning mode for supported models
+  - Graceful handling of providers that don't support `reasoning_effort` parameter
+  - Automatic capability detection from model metadata
+  - User-toggleable via `/thinking` command
 
 #### 4. Configuration (`config.py`)
 - **Pydantic Models:** Type-safe configuration validation
@@ -88,13 +92,27 @@ Sahya Code is a CLI-based AI coding agent forked from [kimi-cli](https://github.
 - **Git Context:** (`git_context.py`) Git integration
 
 #### 9. Skills System (`skills/`)
-- **Modular Skills:** YAML-based skill definitions
+- **Modular Skills:** YAML-based skill definitions (SKILL.md files)
 - **Loading:** Dynamic skill discovery and loading
-- **Built-in Skills:**
-  - `kimi-cli-help` - Help documentation
+- **Skill Count:** 35 built-in skills transferred from kimi-cli
+- **Key Skills:**
+  - `sahya-code-cli-help` - Sahya-specific help documentation
   - `skill-creator` - Skill creation guidance
-  - `writing-plans` - Plan writing assistance
+  - `agency-agents` - Multi-agent workflow orchestration
+  - `system-design` - System design interview preparation
+  - `react-best-practices` - React performance optimization
+  - `code-review` - Automated code review assistance
+  - `impeccable-design` - UI/UX design guidance
   - And more...
+
+**Skill Structure:**
+```
+skills/
+├── SKILL.md              # Main skill definition (required)
+├── scripts/              # Executable scripts (optional)
+├── references/           # Reference documentation (optional)
+└── assets/               # Templates, images, etc. (optional)
+```
 
 ## Data Flow
 
@@ -151,18 +169,66 @@ export SAHYA_MODEL_MAX_CONTEXT_SIZE="128000"
 
 **Configuration File (`~/.local/share/sahya-code/config.toml`):**
 ```toml
-default_model = "default"
+default_model = "kimi-k2.5"
 
-[models.default]
+[models."kimi-k2.5"]
 provider = "sahya"
 model = "kimi-k2.5"
-max_context_size = 256000
-capabilities = ["image_in", "thinking"]
+max_context_size = 128000
+capabilities = ["image_in", "video_in"]
 
 [providers.sahya]
 type = "openai_legacy"
 base_url = "https://llm.nexiant.ai"
 api_key = "sk-VBkuXAOO7e2kV5-uWpz84A"
+```
+
+### LiteLLM Integration Notes
+
+**Model Key Format:**
+- Models are keyed by their ID only (e.g., `kimi-k2.5`, not `sahya:kimi-k2.5`)
+- This simplifies configuration and matches user expectations
+
+**Thinking/Reasoning Capability:**
+- LiteLLM reports `supports_reasoning=true` for some models (e.g., kimi-k2.5)
+- However, LiteLLM doesn't support the `reasoning_effort` parameter in the OpenAI API
+- Sahya Code handles this gracefully:
+  1. Enables thinking capability based on model metadata
+  2. Attempts to set `reasoning_effort` via `with_thinking()`
+  3. If the provider rejects it, logs a warning and continues normally
+  4. User can toggle thinking via `/thinking` command
+
+**Model Fetching:**
+- `refresh_openai_legacy_models()` fetches available models from `/v1/models` endpoint
+- Filters out embedding models (jina, nomic, mxbai, snowflake)
+- Automatically updates config with discovered models
+
+## Update Mechanism
+
+### Version Check on Startup
+- Checks `~/.local/share/sahya-code/latest_version.txt` for available updates
+- Displays yellow notification in welcome banner if update available
+- Shows upgrade command: `uv tool upgrade sahya-code`
+
+### Update Check Implementation (`ui/shell/update.py`)
+```python
+LATEST_VERSION_FILE = get_share_dir() / "latest_version.txt"
+UPGRADE_COMMAND = "uv tool upgrade sahya-code"
+```
+
+**Process:**
+1. `do_update()` fetches latest version from GitHub releases
+2. Compares with current version using semantic versioning
+3. Writes latest version to `LATEST_VERSION_FILE`
+4. Welcome screen displays notification if newer version exists
+
+### Manual Update
+```bash
+# Via uv (recommended)
+uv tool upgrade sahya-code
+
+# Via pip
+pip install --upgrade sahya-code
 ```
 
 ## Security Considerations

@@ -9,7 +9,9 @@ Sahya Code is a CLI-based AI coding agent that helps you write, edit, and unders
 - 🔍 Web search and fetch capabilities
 - 🐚 Shell command execution
 - 🔧 Extensible tool system with MCP support
-- 💻 Terminal UI with rich formatting
+- 💻 **Dual Terminal UIs:**
+  - Shell UI (default) - Inline terminal interface
+  - TUI - Full-screen opencode-style interface
 - 🌐 Web interface for browser-based interaction
 
 ## Installation
@@ -83,11 +85,33 @@ Or with a specific prompt:
 sahya-code "Explain this codebase to me"
 ```
 
+### Terminal UI Modes
+
+Sahya Code offers two terminal interfaces:
+
+**Shell UI (default)** - Inline terminal interface (no dependencies):
+```bash
+sahya-code                        # Start interactive shell
+sahya-code "Explain this code"    # One-shot command
+```
+
+**TUI Mode** - Full-screen opencode-style interface (requires Node.js):
+```bash
+sahya-code --tui                  # Start TUI
+sahya-code --tui -d ./project   # TUI in specific directory
+```
+
+Or use the subcommand:
+```bash
+sahya-code tui                    # Alternative way to start TUI
+```
+
 ### Available Commands
 
 ```bash
 sahya-code --help              # Show help
 sahya-code --version           # Show version
+sahya-code tui                 # Start Terminal UI
 sahya-code web                 # Start web interface
 sahya-code mcp list            # List MCP servers
 sahya-code mcp add <name> ...  # Add MCP server

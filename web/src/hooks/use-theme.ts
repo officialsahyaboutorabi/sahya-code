@@ -3,7 +3,8 @@ import { flushSync } from "react-dom";
 
 export type Theme = "light" | "dark";
 
-const THEME_STORAGE_KEY = "kimi-theme";
+const THEME_STORAGE_KEY = "sahya-theme";
+const LEGACY_THEME_STORAGE_KEY = "kimi-theme";
 const THEME_SWITCHING_ATTR = "data-theme-switching";
 const THEME_SWITCH_DURATION_MS = 260;
 
@@ -31,9 +32,18 @@ function getInitialTheme(): ThemeState {
     return { theme: "light", hasUserPreference: false };
   }
 
+  // Check new Sahya key first
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (stored === "light" || stored === "dark") {
     return { theme: stored, hasUserPreference: true };
+  }
+
+  // Fall back to legacy Kimi key
+  const legacyStored = window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+  if (legacyStored === "light" || legacyStored === "dark") {
+    // Migrate to new key
+    window.localStorage.setItem(THEME_STORAGE_KEY, legacyStored);
+    return { theme: legacyStored, hasUserPreference: true };
   }
 
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;

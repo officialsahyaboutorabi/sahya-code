@@ -586,6 +586,11 @@ class _ToolCallBlock:
             arg_style = Style(color="grey50", link=self._full_url) if self._full_url else "grey50"
             text.append(self._argument, style=arg_style)
             text.append(")", style="grey50")
+        elif self.finished and self._result and self._result.is_error:
+            # Show error indicator if tool failed
+            text.append(" (", style="grey50")
+            text.append("failed", style="red")
+            text.append(")", style="grey50")
         return text
 
     def _render_todo_markdown(self, block: TodoDisplayBlock) -> str:

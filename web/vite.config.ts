@@ -7,11 +7,25 @@ import { defineConfig } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 const PYPROJECT_VERSION_REGEX = /^\s*version\s*=\s*"([^"]+)"/m;
+const SAHYA_CODE_VERSION_REGEX = /^\s*version\s*=\s*"([^"]+)"/m;
 
-function readKimiCliVersion(): string {
+function readSahyaCodeVersion(): string {
   const fallback = process.env.KIMI_CLI_VERSION ?? "dev";
   const pyprojectPath = path.resolve(__dirname, "../pyproject.toml");
+  const sahyaPyprojectPath = path.resolve(__dirname, "../../pyproject.toml");
 
+  // Try sahya-code pyproject.toml first
+  try {
+    const pyproject = fs.readFileSync(sahyaPyprojectPath, "utf8");
+    const match = pyproject.match(SAHYA_CODE_VERSION_REGEX);
+    if (match?.[1]) {
+      return match[1];
+    }
+  } catch {
+    // Fall through to kimi-cli path
+  }
+
+  // Fallback to kimi-cli pyproject.toml
   try {
     const pyproject = fs.readFileSync(pyprojectPath, "utf8");
     const match = pyproject.match(PYPROJECT_VERSION_REGEX);
@@ -25,7 +39,7 @@ function readKimiCliVersion(): string {
   return fallback;
 }
 
-const kimiCliVersion = readKimiCliVersion();
+const sahyaCodeVersion = readSahyaCodeVersion();
 const shouldAnalyze = process.env.ANALYZE === "true";
 
 // https://vite.dev/config/
@@ -51,7 +65,7 @@ export default defineConfig({
       : []),
   ],
   define: {
-    __KIMI_CLI_VERSION__: JSON.stringify(kimiCliVersion),
+    __SAHYA_CODE_VERSION__: JSON.stringify(sahyaCodeVersion),
   },
   resolve: {
     alias: {

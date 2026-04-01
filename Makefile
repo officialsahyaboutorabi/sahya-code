@@ -157,4 +157,36 @@ gen-docs: ## Generate user docs with Kimi Code CLI.
 	@echo "==> Generating user docs"
 	@uv run kimi --yolo --prompt /skill:gen-docs
 
+# Installation targets
+.PHONY: install install-local install-dev install-tui
+
+install: ## Install Sahya Code from PyPI (for end users).
+	@echo "==> Installing Sahya Code from PyPI"
+	@./install.sh --pypi
+
+install-local: ## Install Sahya Code from local source.
+	@echo "==> Installing Sahya Code from local source"
+	@./install.sh --local
+
+install-dev: prepare ## Install in development mode with all dependencies.
+	@echo "==> Installing in development mode"
+	@uv tool install --editable --python 3.13 .
+	@echo "==> Setting up TUI"
+	@cd src/sahya_code/tui && npm install
+	@echo "✅ Development install complete!"
+
+install-tui: ## Install TUI dependencies only.
+	@echo "==> Installing TUI dependencies"
+	@cd src/sahya_code/tui && npm install
+	@echo "✅ TUI dependencies installed!"
+
+.PHONY: uninstall
+uninstall: ## Uninstall Sahya Code.
+	@echo "==> Uninstalling Sahya Code"
+	@uv tool uninstall sahya-code || true
+	@echo "✅ Sahya Code uninstalled"
+
+.PHONY: reinstall
+reinstall: uninstall install-local ## Reinstall Sahya Code from local source.
+
 include src/kimi_cli/deps/Makefile

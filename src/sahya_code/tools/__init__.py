@@ -34,9 +34,16 @@ def extract_key_argument(json_content: str | streamingjson.Lexer, tool_name: str
         case "SendDMail":
             return None
         case "Think":
-            if not isinstance(curr_args, dict) or not curr_args.get("thought"):
+            # Think tool - show a shortened preview of the thought
+            if not isinstance(curr_args, dict):
                 return None
-            key_argument = str(curr_args["thought"])
+            thought = curr_args.get("thought", "").strip()
+            if not thought:
+                return "thinking..."
+            # Truncate long thoughts for display
+            if len(thought) > 50:
+                thought = thought[:47] + "..."
+            key_argument = f'"{thought}"'
         case "SetTodoList":
             return None
         case "Shell":

@@ -1,5 +1,5 @@
 /**
- * Wire protocol types for Kimi CLI communication
+ * Wire protocol types for Sahya Code CLI communication
  * Based on the JSON-RPC 2.0 event stream format from stdio.jsonl
  */
 

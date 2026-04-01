@@ -113,12 +113,6 @@ _PROMPT_STYLE_DARK = {
     "slash-completion-menu.meta": "fg:#7c8594",
     "slash-completion-menu.command.current": "fg:#6fb7ff bold",
     "slash-completion-menu.meta.current": "fg:#56a4ff",
-    # Modern prompt symbols
-    "prompt-symbol": "fg:#4f9fff bold",
-    "prompt-symbol-thinking": "fg:#a855f7 bold",
-    "prompt-symbol-plan": "fg:#f59e0b bold",
-    "prompt-symbol-shell": "fg:#10b981 bold",
-    "prompt-mode-shell": "fg:#6b7280",
 }
 
 _PROMPT_STYLE_LIGHT = {
@@ -133,12 +127,6 @@ _PROMPT_STYLE_LIGHT = {
     "slash-completion-menu.meta": "fg:#6b7280",
     "slash-completion-menu.command.current": "fg:#1d4ed8 bold",
     "slash-completion-menu.meta.current": "fg:#2563eb",
-    # Modern prompt symbols
-    "prompt-symbol": "fg:#2563eb bold",
-    "prompt-symbol-thinking": "fg:#9333ea bold",
-    "prompt-symbol-plan": "fg:#d97706 bold",
-    "prompt-symbol-shell": "fg:#059669 bold",
-    "prompt-mode-shell": "fg:#9ca3af",
 }
 
 

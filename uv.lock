@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -8,11 +8,11 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "kimi-cli",
     "kimi-code",
     "kimi-sdk",
     "kosong",
     "pykaos",
+    "sahya-code",
 ]
 
 [[package]]
@@ -1209,7 +1209,7 @@ wheels = [
 [[package]]
 name = "kimi-cli"
 version = "1.28.0"
-source = { editable = "." }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agent-client-protocol" },
     { name = "aiofiles" },
@@ -1242,60 +1242,9 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "websockets" },
 ]
-
-[package.dev-dependencies]
-dev = [
-    { name = "inline-snapshot", extra = ["black"] },
-    { name = "pyinstaller" },
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-    { name = "ty" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "agent-client-protocol", specifier = "==0.8.0" },
-    { name = "aiofiles", specifier = ">=24.0,<26.0" },
-    { name = "aiohttp", specifier = "==3.13.3" },
-    { name = "batrachian-toad", marker = "python_full_version >= '3.14'", specifier = "==0.5.23" },
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "fastmcp", specifier = "==2.12.5" },
-    { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
-    { name = "jinja2", specifier = "==3.1.6" },
-    { name = "keyring", specifier = ">=25.7.0" },
-    { name = "kosong", extras = ["contrib"], editable = "packages/kosong" },
-    { name = "loguru", specifier = ">=0.6.0,<0.8" },
-    { name = "lxml", specifier = "==6.0.2" },
-    { name = "pillow", specifier = "==12.1.0" },
-    { name = "prompt-toolkit", specifier = "==3.0.52" },
-    { name = "pydantic", specifier = "==2.12.5" },
-    { name = "pykaos", editable = "packages/kaos" },
-    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'", specifier = ">=12.1" },
-    { name = "pyyaml", specifier = "==6.0.3" },
-    { name = "rich", specifier = "==14.2.0" },
-    { name = "ripgrepy", specifier = "==2.2.0" },
-    { name = "scalar-fastapi", specifier = ">=1.5.0" },
-    { name = "setproctitle", specifier = ">=1.3.0" },
-    { name = "streamingjson", specifier = "==0.0.5" },
-    { name = "tenacity", specifier = "==9.1.2" },
-    { name = "tomlkit", specifier = "==0.14.0" },
-    { name = "trafilatura", specifier = "==2.0.0" },
-    { name = "typer", specifier = "==0.21.1" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
-    { name = "websockets", specifier = ">=14.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "inline-snapshot", extras = ["black"], specifier = ">=0.31.1" },
-    { name = "pyinstaller", specifier = "==6.18.0" },
-    { name = "pyright", specifier = ">=1.1.407" },
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-asyncio", specifier = ">=1.3.0" },
-    { name = "ruff", specifier = ">=0.14.10" },
-    { name = "ty", specifier = ">=0.0.9" },
+sdist = { url = "https://files.pythonhosted.org/packages/c3/73/ef25d5fdc1907a6a4afb9f26e434d69699461afa832efaa41fefbc0f6bc0/kimi_cli-1.28.0.tar.gz", hash = "sha256:be8e99ef7efb2ac27e37c7b2dd19794d1ef29ba1bfbc72fdcf16b57733d88cf0", size = 5166903, upload-time = "2026-03-30T15:00:43.272Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/34/d8/26e74c075aa01fea9c0a405d166e7808c96ae215147728f6fb4b053a1570/kimi_cli-1.28.0-py3-none-any.whl", hash = "sha256:55de5c360c92bf99c5942df7b5551b12ae006969147ae66f8af469c4c46aca24", size = 5471641, upload-time = "2026-03-30T15:00:40.093Z" },
 ]
 
 [[package]]
@@ -1307,7 +1256,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "kimi-cli", editable = "." }]
+requires-dist = [{ name = "kimi-cli", specifier = "==1.28.0" }]
 
 [[package]]
 name = "kimi-sdk"
@@ -2885,6 +2834,98 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/aa/9f89c719c467dfaf8ad799b9bae0df494513fb21d31a6059cb5870e57e74/ruff-0.14.14-py3-none-win32.whl", hash = "sha256:b530c191970b143375b6a68e6f743800b2b786bbcf03a7965b06c4bf04568167", size = 10502442, upload-time = "2026-01-22T22:30:38.93Z" },
     { url = "https://files.pythonhosted.org/packages/87/44/90fa543014c45560cae1fffc63ea059fb3575ee6e1cb654562197e5d16fb/ruff-0.14.14-py3-none-win_amd64.whl", hash = "sha256:3dde1435e6b6fe5b66506c1dff67a421d0b7f6488d466f651c07f4cab3bf20fd", size = 11630486, upload-time = "2026-01-22T22:30:10.852Z" },
     { url = "https://files.pythonhosted.org/packages/9e/6a/40fee331a52339926a92e17ae748827270b288a35ef4a15c9c8f2ec54715/ruff-0.14.14-py3-none-win_arm64.whl", hash = "sha256:56e6981a98b13a32236a72a8da421d7839221fa308b223b9283312312e5ac76c", size = 10920448, upload-time = "2026-01-22T22:30:15.417Z" },
+]
+
+[[package]]
+name = "sahya-code"
+version = "1.0.9"
+source = { editable = "." }
+dependencies = [
+    { name = "agent-client-protocol" },
+    { name = "aiofiles" },
+    { name = "aiohttp" },
+    { name = "batrachian-toad", marker = "python_full_version >= '3.14'" },
+    { name = "fastapi" },
+    { name = "fastmcp" },
+    { name = "httpx", extra = ["socks"] },
+    { name = "jinja2" },
+    { name = "keyring" },
+    { name = "kosong", extra = ["contrib"] },
+    { name = "loguru", version = "0.6.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
+    { name = "loguru", version = "0.7.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
+    { name = "lxml" },
+    { name = "pillow" },
+    { name = "prompt-toolkit" },
+    { name = "pydantic" },
+    { name = "pykaos" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "ripgrepy" },
+    { name = "scalar-fastapi" },
+    { name = "setproctitle" },
+    { name = "streamingjson" },
+    { name = "tenacity" },
+    { name = "tomlkit" },
+    { name = "trafilatura" },
+    { name = "typer" },
+    { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "inline-snapshot", extra = ["black"] },
+    { name = "pyinstaller" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+    { name = "ty" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agent-client-protocol", specifier = "==0.8.0" },
+    { name = "aiofiles", specifier = ">=24.0,<26.0" },
+    { name = "aiohttp", specifier = "==3.13.3" },
+    { name = "batrachian-toad", marker = "python_full_version >= '3.14'", specifier = "==0.5.23" },
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "fastmcp", specifier = "==2.12.5" },
+    { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
+    { name = "jinja2", specifier = "==3.1.6" },
+    { name = "keyring", specifier = ">=25.7.0" },
+    { name = "kosong", extras = ["contrib"], editable = "packages/kosong" },
+    { name = "loguru", specifier = ">=0.6.0,<0.8" },
+    { name = "lxml", specifier = "==6.0.2" },
+    { name = "pillow", specifier = "==12.1.0" },
+    { name = "prompt-toolkit", specifier = "==3.0.52" },
+    { name = "pydantic", specifier = "==2.12.5" },
+    { name = "pykaos", editable = "packages/kaos" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'", specifier = ">=12.1" },
+    { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "rich", specifier = "==14.2.0" },
+    { name = "ripgrepy", specifier = "==2.2.0" },
+    { name = "scalar-fastapi", specifier = ">=1.5.0" },
+    { name = "setproctitle", specifier = ">=1.3.0" },
+    { name = "streamingjson", specifier = "==0.0.5" },
+    { name = "tenacity", specifier = "==9.1.2" },
+    { name = "tomlkit", specifier = "==0.14.0" },
+    { name = "trafilatura", specifier = "==2.0.0" },
+    { name = "typer", specifier = "==0.21.1" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
+    { name = "websockets", specifier = ">=14.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "inline-snapshot", extras = ["black"], specifier = ">=0.31.1" },
+    { name = "pyinstaller", specifier = "==6.18.0" },
+    { name = "pyright", specifier = ">=1.1.407" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "ruff", specifier = ">=0.14.10" },
+    { name = "ty", specifier = ">=0.0.9" },
 ]
 
 [[package]]

@@ -75,11 +75,10 @@ AttachmentCache = prompt_placeholders.AttachmentCache
 CachedAttachment = prompt_placeholders.CachedAttachment
 _parse_attachment_kind = prompt_placeholders.parse_attachment_kind
 
-# Modern prompt symbols (opencode-style)
-PROMPT_SYMBOL = "❯"
-PROMPT_SYMBOL_SHELL = "❯"
-PROMPT_SYMBOL_THINKING = "◉"
-PROMPT_SYMBOL_PLAN = "◉"
+PROMPT_SYMBOL = "✨"
+PROMPT_SYMBOL_SHELL = "$"
+PROMPT_SYMBOL_THINKING = "💫"
+PROMPT_SYMBOL_PLAN = "📋"
 
 
 class SlashCommandCompleter(Completer):
@@ -1612,9 +1611,7 @@ class CustomPromptSession:
             fragments.append(("", "\n"))
             fragments.append(("class:running-prompt-separator", "─" * max(0, columns)))
             fragments.append(("", "\n"))
-        # Shell mode: show [shell] prefix with prompt symbol
-        fragments.append(("class:prompt-mode-shell", "[shell] "))
-        fragments.append(("class:prompt-symbol-shell", f"{PROMPT_SYMBOL_SHELL} "))
+        fragments.append(("bold", f"{PROMPT_SYMBOL_SHELL} "))
         return fragments
 
     def _open_in_external_editor(self, event: KeyPressEvent) -> None:
@@ -1765,13 +1762,11 @@ class CustomPromptSession:
         return to_formatted_text(block)
 
     def _render_agent_prompt_label(self) -> FormattedText:
-        """Render the prompt symbol with modern styling."""
         status = self._status_provider()
         if status.plan_mode:
-            return FormattedText([("class:prompt-symbol-plan", f"{PROMPT_SYMBOL_PLAN} ")])
-        if self._thinking:
-            return FormattedText([("class:prompt-symbol-thinking", f"{PROMPT_SYMBOL_THINKING} ")])
-        return FormattedText([("class:prompt-symbol", f"{PROMPT_SYMBOL} ")])
+            return FormattedText([(get_toolbar_colors().plan_prompt, f"{PROMPT_SYMBOL_PLAN} ")])
+        symbol = PROMPT_SYMBOL_THINKING if self._thinking else PROMPT_SYMBOL
+        return FormattedText([("", f"{symbol} ")])
 
     def __enter__(self) -> CustomPromptSession:
         if self._status_refresh_task is not None and not self._status_refresh_task.done():
@@ -1998,13 +1993,6 @@ class CustomPromptSession:
         fragments: list[tuple[str, str]] = []
         tc = get_toolbar_colors()
 
-        # Time-based tip rotation (every 30 s, independent of user submissions)
-        now = time.monotonic()
-        if now - self._last_tip_rotate_time >= _TIP_ROTATE_INTERVAL:
-            self._tip_rotation_index += 1
-            self._last_tip_rotate_time = now
-
-        # Toolbar separator line
         fragments.append((tc.separator, "─" * columns))
         fragments.append(("", "\n"))
 
@@ -2025,7 +2013,9 @@ class CustomPromptSession:
             fragments.extend([(tc.plan_label, "plan"), ("", "  ")])
             remaining -= 6
 
-        # Mode indicator (agent / shell) + model name + thinking indicator
+        # Mode indicator (agent / shell) + model name + thinking indicator.
+        # Degrade gracefully on narrow terminals:
+        #   full: "agent (model-name ○)"  → mid: "agent ○"  → bare: "agent"
         mode = str(self._mode)
         if self._mode == PromptMode.AGENT and self._model_name:
             thinking_dot = "●" if self._thinking else "○"
@@ -2035,10 +2025,12 @@ class CustomPromptSession:
                 mode = mode_full
             elif _display_width(mode_mid) <= remaining - 2:
                 mode = mode_mid
+            # else: keep bare mode name — model_name and dot are both dropped
         fragments.extend([("", mode), ("", "  ")])
         remaining -= _display_width(mode) + 2
 
-        # CWD + git branch with status badge
+        # CWD (truncated from left) + git branch with status badge
+        # Degrade gracefully on narrow terminals: full → cwd-only → truncated cwd → skip
         cwd = _truncate_left(_shorten_cwd(str(KaosPath.cwd())), _MAX_CWD_COLS)
         branch = _get_git_branch()
         if branch:
@@ -2050,7 +2042,7 @@ class CustomPromptSession:
             cwd_text = cwd
         cwd_w = _display_width(cwd_text)
         if cwd_w > remaining - 2:
-            cwd_text = cwd
+            cwd_text = cwd  # drop badge
             cwd_w = _display_width(cwd_text)
         if cwd_w > remaining - 2:
             cwd_text = _truncate_right(cwd, max(0, remaining - 2))
@@ -2077,7 +2069,7 @@ class CustomPromptSession:
         if tip_text and _display_width(tip_text) <= remaining:
             fragments.append((tc.tip, tip_text))
 
-        # Line 2: toast (left) + context (right)
+        # ── line 2: toast (left) + context (right) — always rendered ──────
         fragments.append(("", "\n"))
 
         right_text = self._render_right_span(status)

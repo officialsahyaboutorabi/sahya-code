@@ -237,7 +237,13 @@ def get_default_config() -> Config:
                 model="kimi-k2.5",
                 max_context_size=256000,
                 capabilities={"image_in"},
-            )
+            ),
+            "kimi-k2.5": LLMModel(
+                provider="sahya",
+                model="kimi-k2.5",
+                max_context_size=256000,
+                capabilities={"image_in"},
+            ),
         },
         providers={
             "sahya": LLMProvider(

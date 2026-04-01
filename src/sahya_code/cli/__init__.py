@@ -41,7 +41,7 @@ Documentation:        https://github.com/sahyaboutorabi/sahya-code\n""",
     help="Sahya, your AI coding companion.",
 )
 
-UIMode = Literal["shell", "print", "acp", "wire"]
+UIMode = Literal["shell", "print", "acp", "wire", "tui"]
 
 
 class ExitCode:
@@ -211,6 +211,13 @@ def sahya(
             help="Run as Wire server (experimental).",
         ),
     ] = False,
+    tui_mode: Annotated[
+        bool,
+        typer.Option(
+            "--tui",
+            help="Run with the opencode-style Terminal UI (TUI).",
+        ),
+    ] = False,
     input_format: Annotated[
         InputFormat | None,
         typer.Option(
@@ -326,7 +333,15 @@ def sahya(
         ),
     ] = None,
 ):
-    """Sahya, your AI coding companion."""
+    """Sahya, your AI coding companion.
+    
+    UI Modes:
+    - Default (shell): Interactive shell UI
+    - --tui: Opencode-style Terminal UI (requires Node.js)
+    - --print: Non-interactive print mode
+    - --acp: ACP server mode
+    - --wire: Wire server mode
+    """
     import asyncio
     import contextlib
     import json
@@ -431,6 +446,8 @@ def sahya(
         ui = "acp"
     elif wire_mode:
         ui = "wire"
+    elif tui_mode:
+        ui = "tui"
 
     if prompt is not None:
         prompt = prompt.strip()
@@ -608,6 +625,11 @@ def sahya(
                             logger.warning("Wire server ignores prompt argument")
                         await instance.run_wire_stdio()
                         exit_code = ExitCode.SUCCESS
+                    case "tui":
+                        exit_code = await instance.run_tui(
+                            prompt=prompt,
+                            work_dir=work_dir,
+                        )
             except Reload as e:
                 preserve_background_tasks = True
                 if e.session_id is None:
@@ -959,6 +981,101 @@ def web_worker(session_id: str) -> None:
 
     enable_logging(debug=False)
     asyncio.run(run_worker(parsed_session_id))
+
+
+@cli.command()
+def tui(
+    session: Annotated[
+        str | None,
+        typer.Option(
+            "--session",
+            "-s",
+            help="Session ID to resume",
+        ),
+    ] = None,
+    work_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--work-dir",
+            "-d",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            help="Working directory",
+        ),
+    ] = None,
+    prompt: Annotated[
+        str | None,
+        typer.Option(
+            "--prompt",
+            "-p",
+            help="Initial prompt to send",
+        ),
+    ] = None,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help="Model to use",
+        ),
+    ] = None,
+    yolo: Annotated[
+        bool,
+        typer.Option(
+            "--yolo",
+            "-y",
+            help="Auto-approve all actions",
+        ),
+    ] = False,
+    debug: Annotated[
+        bool,
+        typer.Option(
+            "--debug",
+            help="Enable debug logging",
+        ),
+    ] = False,
+) -> None:
+    """Launch the Terminal UI (TUI) - inspired by opencode."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    # Find the TUI entry point
+    tui_dir = Path(__file__).parent.parent / "tui"
+    main_ts = tui_dir / "src" / "main.ts"
+
+    if not main_ts.exists():
+        typer.echo("Error: TUI not found. Please ensure sahya-code is installed correctly.", err=True)
+        raise typer.Exit(code=1)
+
+    # Build command arguments
+    cmd = ["npx", "tsx", str(main_ts)]
+    
+    if session:
+        cmd.extend(["--session", session])
+    if work_dir:
+        cmd.extend(["--work-dir", str(work_dir)])
+    if prompt:
+        cmd.extend(["--prompt", prompt])
+    if model:
+        cmd.extend(["--model", model])
+    if yolo:
+        cmd.append("--yolo")
+    if debug:
+        cmd.append("--debug")
+
+    # Run the TUI
+    try:
+        result = subprocess.run(cmd, cwd=str(tui_dir))
+        sys.exit(result.returncode)
+    except FileNotFoundError:
+        typer.echo(
+            "Error: Node.js and npx are required for the TUI.\n"
+            "Please install Node.js: https://nodejs.org/",
+            err=True,
+        )
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

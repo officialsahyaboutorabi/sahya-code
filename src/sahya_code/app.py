@@ -488,6 +488,17 @@ class SahyaCode:
                         level=WelcomeInfoItem.Level.WARN,
                     )
                 )
+            # Check if using kimi-for-coding without proper provider setup
+            if self._soul.model_name in ("kimi-for-coding", "kimi-code"):
+                model_config = self._runtime.config.models.get(self._soul.model_name)
+                if model_config and not model_config.provider.startswith("managed:"):
+                    welcome_info.append(
+                        WelcomeInfoItem(
+                            name="Warning",
+                            value="kimi-for-coding requires /login for Kimi Code authentication",
+                            level=WelcomeInfoItem.Level.WARN,
+                        )
+                    )
         welcome_info.append(
             WelcomeInfoItem(
                 name="\nTip",
@@ -501,6 +512,46 @@ class SahyaCode:
         async with self._env():
             shell = Shell(self._soul, welcome_info=welcome_info)
             return await shell.run(command)
+
+    async def run_tui(
+        self,
+        *,
+        prompt: str | None = None,
+        work_dir: Path | None = None,
+    ) -> int:
+        """Run the Sahya Code CLI instance with opencode-style TUI."""
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        # Find the TUI entry point
+        tui_dir = Path(__file__).parent / "tui"
+        main_ts = tui_dir / "src" / "main.ts"
+
+        if not main_ts.exists():
+            raise RuntimeError(
+                "TUI not found. Please ensure sahya-code is installed correctly."
+            )
+
+        # Build command arguments
+        cmd = ["npx", "tsx", str(main_ts)]
+
+        # Pass session info
+        cmd.extend(["--session", self._runtime.session.id])
+        if work_dir:
+            cmd.extend(["--work-dir", str(work_dir)])
+        if prompt:
+            cmd.extend(["--prompt", prompt])
+
+        # Run the TUI - this blocks until TUI exits
+        try:
+            result = subprocess.run(cmd, cwd=str(tui_dir))
+            return result.returncode
+        except FileNotFoundError:
+            raise RuntimeError(
+                "Node.js and npx are required for the TUI. "
+                "Please install Node.js: https://nodejs.org/"
+            ) from None
 
     async def run_print(
         self,

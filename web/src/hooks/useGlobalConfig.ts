@@ -91,8 +91,13 @@ export function useGlobalConfig(): UseGlobalConfigReturn {
     const handler = () => {
       refresh();
     };
+    window.addEventListener("sahya:config-update", handler);
+    // Also listen to legacy event for backward compatibility
     window.addEventListener("kimi:config-update", handler);
-    return () => window.removeEventListener("kimi:config-update", handler);
+    return () => {
+      window.removeEventListener("sahya:config-update", handler);
+      window.removeEventListener("kimi:config-update", handler);
+    };
   }, [refresh]);
 
   return {

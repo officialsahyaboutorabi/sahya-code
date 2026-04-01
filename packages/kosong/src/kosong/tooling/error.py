@@ -17,7 +17,7 @@ class ToolParseError(ToolError):
     def __init__(self, message: str):
         super().__init__(
             message=f"Error parsing JSON arguments: {message}",
-            brief="Invalid arguments",
+            brief="Invalid tool arguments",
         )
 
 
@@ -27,7 +27,7 @@ class ToolValidateError(ToolError):
     def __init__(self, message: str):
         super().__init__(
             message=f"Error validating JSON arguments: {message}",
-            brief="Invalid arguments",
+            brief="Invalid tool arguments",
         )
 
 

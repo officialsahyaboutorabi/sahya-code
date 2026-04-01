@@ -49,7 +49,9 @@ async def usage(app: Shell, args: str):
 
     usage_url = _usage_url(app.soul.runtime.llm.model_config)
     if usage_url is None:
-        console.print("[yellow]Usage is available on Kimi Code platform only.[/yellow]")
+        console.print("[yellow]Usage information is only available for Kimi Code platform.[/yellow]")
+        console.print("[dim]Current provider: " + (app.soul.runtime.llm.model_config.provider if app.soul.runtime.llm.model_config else "unknown") + "[/dim]")
+        console.print("[dim]Run /login to authenticate with Kimi Code and check usage.[/dim]")
         return
 
     with console.status("[cyan]Fetching usage...[/cyan]"):

@@ -650,12 +650,43 @@ class Shell:
             console.print(f"[red]{e}[/red]")
         except ChatProviderError as e:
             logger.exception("LLM provider error:")
+            error_str = str(e).lower()
+            # Log full error details for debugging
+            logger.error("Full error details: status={status}, message={message}",
+                        status=getattr(e, 'status_code', 'N/A'),
+                        message=str(e))
+            
             if isinstance(e, APIStatusError) and e.status_code == 401:
                 console.print("[red]Authorization failed, please check your login status[/red]")
             elif isinstance(e, APIStatusError) and e.status_code == 402:
                 console.print("[red]Membership expired, please renew your plan[/red]")
             elif isinstance(e, APIStatusError) and e.status_code == 403:
-                console.print("[red]Quota exceeded, please upgrade your plan or retry later[/red]")
+                # 403 could be quota exceeded, model not found, OR other permission issues
+                if "quota" in error_str or "exceed" in error_str:
+                    console.print("[red]Quota exceeded, please upgrade your plan or retry later[/red]")
+                    console.print("[dim]Run /usage to check your current quota usage.[/dim]")
+                    console.print("[dim]If you believe this is an error, the API may be returning incorrect quota status.[/dim]")
+                elif "model" in error_str and ("not found" in error_str or "not available" in error_str):
+                    console.print(f"[red]Model not available: {e}[/red]")
+                    console.print("[dim]The requested model may not be configured on this endpoint.[/dim]")
+                else:
+                    console.print(f"[red]Access denied (403): {e}[/red]")
+                    console.print("[dim]This could be due to quota, authentication, or model access restrictions.[/dim]")
+                    console.print("[dim]Raw error: {error}[/dim]".format(error=str(e)[:200]))
+            elif isinstance(e, APIStatusError) and e.status_code == 404:
+                # Model not found - might be kimi-for-coding without login
+                if "kimi-for-coding" in error_str or "kimi-code" in error_str:
+                    console.print("[red]Model 'kimi-for-coding' requires Kimi Code authentication.[/red]")
+                    console.print("[yellow]Please run /login to authenticate with Kimi Code.[/yellow]")
+                else:
+                    console.print(f"[red]Model not found: {e}[/red]")
+            elif "buffer overflow" in error_str or "midstream" in error_str:
+                # Mid-stream errors - usually temporary
+                console.print("[yellow]⚠️  Connection interrupted - the LLM service experienced a temporary issue.[/yellow]")
+                console.print("[dim]The request may have been partially processed. Please retry if needed.[/dim]")
+            elif "serviceunavailable" in error_str or "fallback" in error_str:
+                # Service temporarily unavailable
+                console.print("[yellow]⚠️  LLM service temporarily unavailable. Please retry in a moment.[/yellow]")
             else:
                 console.print(f"[red]LLM provider error: {e}[/red]")
         except MaxStepsReached as e:
@@ -938,18 +969,21 @@ class Shell:
 
 
 _SAHYA_ORANGE = "#ff4f00"
-# Full logo for wide terminals (fits in 80 columns)
+# Full logo for wide terminals (fits in 80 columns) - with extra padding
 _LOGO_FULL = Text.assemble(
+    (r"                                                                              " + "\n", _SAHYA_ORANGE),
     (r"███████╗ █████╗ ██╗  ██╗██╗   ██╗ █████╗     ██████╗ ██████╗ ██████╗ ███████╗" + "\n", _SAHYA_ORANGE),
     (r"██╔════╝██╔══██╗██║  ██║╚██╗ ██╔╝██╔══██╗   ██╔════╝██╔═══██╗██╔══██╗██╔════╝" + "\n", _SAHYA_ORANGE),
     (r"███████╗███████║███████║ ╚████╔╝ ███████║   ██║     ██║   ██║██║  ██║█████╗  " + "\n", _SAHYA_ORANGE),
     (r"╚════██║██╔══██║██╔══██║  ╚██╔╝  ██╔══██║   ██║     ██║   ██║██║  ██║██╔══╝  " + "\n", _SAHYA_ORANGE),
     (r"███████║██║  ██║██║  ██║   ██║   ██║  ██║   ╚██████╗╚██████╔╝██████╔╝███████╗" + "\n", _SAHYA_ORANGE),
     (r"╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝    ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝" + "\n", _SAHYA_ORANGE),
+    (r"                                                                              " + "\n", _SAHYA_ORANGE),
 )
-# Medium logo for medium terminals (fits in 60 columns)
+# Medium logo for medium terminals (fits in 60 columns) - with extra padding
 _LOGO_MEDIUM = Text.assemble(
     (r"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓" + "\n", _SAHYA_ORANGE),
+    (r"┃                                                         ┃" + "\n", _SAHYA_ORANGE),
     (r"┃  ███████╗ █████╗ ██╗  ██╗██╗   ██╗ █████╗               ┃" + "\n", _SAHYA_ORANGE),
     (r"┃  ██╔════╝██╔══██╗██║  ██║╚██╗ ██╔╝██╔══██╗              ┃" + "\n", _SAHYA_ORANGE),
     (r"┃  ███████╗███████║███████║ ╚████╔╝ ███████║              ┃" + "\n", _SAHYA_ORANGE),
@@ -962,6 +996,7 @@ _LOGO_MEDIUM = Text.assemble(
     (r"┃          ██║     ██║   ██║██║  ██║██╔══╝                ┃" + "\n", _SAHYA_ORANGE),
     (r"┃          ╚██████╗╚██████╔╝██████╔╝███████╗              ┃" + "\n", _SAHYA_ORANGE),
     (r"┃           ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝              ┃" + "\n", _SAHYA_ORANGE),
+    (r"┃                                                         ┃" + "\n", _SAHYA_ORANGE),
     (r"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛" + "\n", _SAHYA_ORANGE),
 )
 # Compact logo for narrow terminals - just the letter S
@@ -1038,24 +1073,12 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
     # Set panel background based on theme
     panel_bg = "on #0d0d0d" if theme == "dark" else "on #fbfbfb"
 
-    # Calculate appropriate padding based on terminal width
-    # Ensure logo fits without wrapping
-    import shutil
-    term_width = shutil.get_terminal_size().columns
-    # Full logo is 80 chars wide, need at least 84 for borders + minimal padding
-    if term_width >= 84:
-        h_padding = 2
-    elif term_width >= 80:
-        h_padding = 1
-    else:
-        h_padding = 0
-
     console.print(
         Panel(
             Group(*rows),
             border_style=_SAHYA_ORANGE,
-            expand=False,  # Don't expand to full width
-            padding=(1, h_padding),
+            expand=True,
+            padding=(2, 2),  # Increased vertical padding for bigger welcome section
             style=panel_bg,
         )
     )

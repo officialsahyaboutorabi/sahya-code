@@ -1,6 +1,9 @@
-declare const __KIMI_CLI_VERSION__: string | undefined;
+declare const __SAHYA_CODE_VERSION__: string | undefined;
 
-export const kimiCliVersion =
-  typeof __KIMI_CLI_VERSION__ !== "undefined" && __KIMI_CLI_VERSION__
-    ? __KIMI_CLI_VERSION__
+export const sahyaCodeVersion =
+  typeof __SAHYA_CODE_VERSION__ !== "undefined" && __SAHYA_CODE_VERSION__
+    ? __SAHYA_CODE_VERSION__
     : "dev";
+
+// Legacy alias for backward compatibility
+export const kimiCliVersion = sahyaCodeVersion;

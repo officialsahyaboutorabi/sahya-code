@@ -709,260 +709,63 @@ def hooks(app: Shell, args: str):
 
 @registry.command
 @shell_mode_registry.command
-async def apikey(app: Shell, args: str):
-    """Set API key for a provider (e.g., /apikey nexiant)"""
-    from prompt_toolkit import PromptSession
-    from pydantic import SecretStr
-
+def diagnose(app: Shell, args: str):
+    """Diagnose connection and configuration issues"""
     soul = ensure_sahya_soul(app)
     if soul is None:
         return
 
-    provider_key = args.strip().lower()
-    if not provider_key:
-        console.print("[red]Usage: /apikey <provider_name>[/red]")
-        console.print("[grey50]Example: /apikey nexiant[/grey50]")
-        return
-
-    config = soul.runtime.config
+    console.print()
+    console.print("[bold]Diagnostics Report[/bold]")
+    console.print("=" * 50)
     
-    # Find provider by key or name
-    target_provider = None
-    target_key = None
+    # Model info
+    model_name = soul.model_name or "Not set"
+    console.print(f"\n[bold]Model:[/bold] {model_name}")
     
-    for key, provider in config.providers.items():
-        if key.lower() == provider_key or provider.type.lower() == provider_key:
-            target_provider = provider
-            target_key = key
-            break
-    
-    if target_provider is None:
-        console.print(f"[red]Provider '{provider_key}' not found.[/red]")
-        console.print("[grey50]Available providers:[/grey50]")
-        for key in config.providers:
-            console.print(f"  - {key}")
-        return
-
-    # Prompt for API key
-    prompt_session: PromptSession[str] = PromptSession()
-    try:
-        api_key = await prompt_session.prompt_async(
-            f"Enter API key for '{target_key}' (will be hidden): ",
-            is_password=True
-        )
-    except (EOFError, KeyboardInterrupt):
-        console.print("[grey50]Cancelled.[/grey50]")
-        return
-
-    api_key = api_key.strip()
-    if not api_key:
-        console.print("[yellow]API key cannot be empty.[/yellow]")
-        return
-
-    # Save to config
-    config_file = config.source_file
-    if config_file is None:
-        console.print(
-            "[yellow]Cannot save: no config file. "
-            "Please run sahya-code normally (not with --config) first.[/yellow]"
-        )
-        return
-
-    try:
-        config_for_save = load_config(config_file)
-        if target_key in config_for_save.providers:
-            config_for_save.providers[target_key].api_key = SecretStr(api_key)
-            save_config(config_for_save, config_file)
-            console.print(f"[green]API key for '{target_key}' saved successfully.[/green]")
-            console.print("[yellow]Reloading to apply changes...[/yellow]")
-            raise Reload(session_id=soul.runtime.session.id)
+    # Provider info
+    if soul.runtime.llm and soul.runtime.llm.model_config:
+        provider = soul.runtime.llm.model_config.provider
+        console.print(f"[bold]Provider:[/bold] {provider}")
+        
+        # Check if it's a managed provider
+        from sahya_code.auth.platforms import is_managed_provider_key
+        if is_managed_provider_key(provider):
+            console.print("[green]✓ Using managed provider (authenticated)[/green]")
         else:
-            console.print(f"[red]Provider '{target_key}' not found in config.[/red]")
-    except (ConfigError, OSError) as exc:
-        console.print(f"[red]Failed to save API key: {exc}[/red]")
-
-
-@registry.command
-@shell_mode_registry.command
-async def url(app: Shell, args: str):
-    """Set base URL for a provider (e.g., /url nexiant https://llm.nexiant.ai)"""
-    soul = ensure_sahya_soul(app)
-    if soul is None:
-        return
-
-    args_parts = args.strip().split()
-    if len(args_parts) < 1:
-        console.print("[red]Usage: /url <provider_name> [url][/red]")
-        console.print("[grey50]Examples:[/grey50]")
-        console.print("  /url nexiant https://llm.nexiant.ai")
-        console.print("  /url sahyagpt https://apisahyagpt.qzz.io")
-        return
-
-    provider_key = args_parts[0].lower()
-    new_url = args_parts[1] if len(args_parts) > 1 else None
-
-    config = soul.runtime.config
-    
-    # Find provider by key or name
-    target_provider = None
-    target_key = None
-    
-    for key, provider in config.providers.items():
-        if key.lower() == provider_key or provider.type.lower() == provider_key:
-            target_provider = provider
-            target_key = key
-            break
-    
-    if target_provider is None:
-        console.print(f"[red]Provider '{provider_key}' not found.[/red]")
-        console.print("[grey50]Available providers:[/grey50]")
-        for key in config.providers:
-            console.print(f"  - {key}")
-        return
-
-    # If no URL provided, show current and prompt
-    if new_url is None:
-        current_url = target_provider.base_url
-        console.print(f"Current URL for '{target_key}': {current_url or '(not set)'}")
-        console.print("[grey50]Usage: /url <provider_name> <new_url>[/grey50]")
-        return
-
-    # Validate URL format
-    if not new_url.startswith(("http://", "https://")):
-        console.print("[red]Invalid URL. Must start with http:// or https://[/red]")
-        return
-
-    # Save to config
-    config_file = config.source_file
-    if config_file is None:
-        console.print(
-            "[yellow]Cannot save: no config file. "
-            "Please run sahya-code normally (not with --config) first.[/yellow]"
-        )
-        return
-
-    try:
-        config_for_save = load_config(config_file)
-        if target_key in config_for_save.providers:
-            config_for_save.providers[target_key].base_url = new_url
-            save_config(config_for_save, config_file)
-            console.print(f"[green]URL for '{target_key}' updated to: {new_url}[/green]")
-            console.print("[yellow]Reloading to apply changes...[/yellow]")
-            raise Reload(session_id=soul.runtime.session.id)
-        else:
-            console.print(f"[red]Provider '{target_key}' not found in config.[/red]")
-    except (ConfigError, OSError) as exc:
-        console.print(f"[red]Failed to save URL: {exc}[/red]")
-
-
-@registry.command
-@shell_mode_registry.command
-async def provider(app: Shell, args: str):
-    """Switch between providers"""
-    soul = ensure_sahya_soul(app)
-    if soul is None:
-        return
-
-    config = soul.runtime.config
-    
-    if not config.providers:
-        console.print("[yellow]No providers configured.[/yellow]")
-        return
-
-    # Build list of providers
-    provider_choices: list[tuple[str, str]] = []
-    current_provider = None
-    
-    for key, provider in sorted(config.providers.items()):
-        provider_label = get_platform_name_for_provider(provider.type) or provider.type
-        marker = ""
-        # Check if this provider is currently active (based on current model)
-        if soul.runtime.llm and soul.runtime.llm.model_config:
-            if soul.runtime.llm.model_config.provider == key:
-                marker = " (current)"
-                current_provider = key
-        display = f"{key} ({provider_label}){marker}"
-        provider_choices.append((key, display))
-
-    if not provider_choices:
-        console.print("[yellow]No providers available.[/yellow]")
-        return
-
-    # If args provided, try to select by name
-    arg = args.strip().lower()
-    if arg:
-        for key, _ in provider_choices:
-            if key.lower() == arg or key.lower().startswith(arg):
-                selected_key = key
-                break
-        else:
-            console.print(f"[red]Provider '{arg}' not found.[/red]")
-            console.print("[grey50]Available providers:[/grey50]")
-            for key, display in provider_choices:
-                console.print(f"  - {display}")
-            return
+            console.print("[yellow]⚠ Using custom provider (not managed)[/yellow]")
     else:
-        # Interactive selection
-        try:
-            selected_key = await ChoiceInput(
-                message="Select a provider (↑↓ navigate, Enter select, Ctrl+C cancel):",
-                options=provider_choices,
-                default=current_provider or provider_choices[0][0],
-            ).prompt_async()
-        except (EOFError, KeyboardInterrupt):
-            return
-
-    if not selected_key:
-        return
-
-    if selected_key == current_provider:
-        console.print(f"[yellow]Already using provider '{selected_key}'.[/yellow]")
-        return
-
-    # Get models for this provider
-    provider_models = [
-        (key, model) for key, model in config.models.items()
-        if model.provider == selected_key
-    ]
-
-    if not provider_models:
-        console.print(f"[red]No models found for provider '{selected_key}'.[/red]")
-        console.print("[grey50]Please add a model for this provider first.[/grey50]")
-        return
-
-    # Select model for this provider
-    model_choices = [(key, f"{model.model}") for key, model in provider_models]
+        console.print("[red]✗ LLM not configured[/red]")
     
-    try:
-        selected_model = await ChoiceInput(
-            message=f"Select a model from '{selected_key}' (↑↓ navigate, Enter select):",
-            options=model_choices,
-            default=model_choices[0][0],
-        ).prompt_async()
-    except (EOFError, KeyboardInterrupt):
-        return
-
-    if not selected_model:
-        return
-
-    # Update default model
-    config_file = config.source_file
-    if config_file is None:
-        console.print(
-            "[yellow]Cannot save: no config file. "
-            "Please run sahya-code normally (not with --config) first.[/yellow]"
-        )
-        return
-
-    try:
-        config_for_save = load_config(config_file)
-        config_for_save.default_model = selected_model
-        save_config(config_for_save, config_file)
-        console.print(f"[green]Switched to provider '{selected_key}' with model '{selected_model}'.[/green]")
-        console.print("[yellow]Reloading to apply changes...[/yellow]")
-        raise Reload(session_id=soul.runtime.session.id)
-    except (ConfigError, OSError) as exc:
-        console.print(f"[red]Failed to save provider change: {exc}[/red]")
+    # Thinking mode
+    thinking = soul.thinking
+    if thinking is not None:
+        console.print(f"[bold]Thinking mode:[/bold] {'On' if thinking else 'Off'}")
+    
+    # Config location
+    from sahya_code.config import get_config_file
+    config_file = get_config_file()
+    console.print(f"\n[bold]Config file:[/bold] {config_file}")
+    console.print(f"[bold]Session:[/bold] {soul.runtime.session.id}")
+    
+    # Check kimi-for-coding specific issues
+    if model_name in ("kimi-for-coding", "kimi-code") or "kimi-code" in model_name:
+        console.print("\n[bold cyan]kimi-for-coding Checks:[/bold cyan]")
+        if soul.runtime.llm and soul.runtime.llm.model_config:
+            provider = soul.runtime.llm.model_config.provider
+            if provider == "managed:kimi-code":
+                console.print("[green]✓ Correct provider (managed:kimi-code)[/green]")
+            else:
+                console.print(f"[red]✗ Wrong provider: {provider}[/red]")
+                console.print("[yellow]  Run /login to authenticate with Kimi Code[/yellow]")
+    
+    console.print()
+    console.print("[dim]If you're seeing quota errors with available quota,[/dim]")
+    console.print("[dim]the API may be returning incorrect status. Try:[/dim]")
+    console.print("[dim]  1. Run /login again to refresh authentication[/dim]")
+    console.print("[dim]  2. Check usage at https://kimi.com/coding[/dim]")
+    console.print("[dim]  3. Wait a moment and retry the request[/dim]")
+    console.print()
 
 
 from . import (  # noqa: E402

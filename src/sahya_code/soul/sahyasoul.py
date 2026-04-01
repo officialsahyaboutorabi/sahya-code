@@ -16,6 +16,7 @@ from kosong.chat_provider import (
     APIEmptyResponseError,
     APIStatusError,
     APITimeoutError,
+    ChatProviderError,
     RetryableChatProvider,
 )
 from kosong.message import Message
@@ -980,13 +981,42 @@ class SahyaSoul:
             return not bool(getattr(exception, "_kimi_recovery_exhausted", False))
         if isinstance(exception, APIEmptyResponseError):
             return True
-        return isinstance(exception, APIStatusError) and exception.status_code in (
-            429,  # Too Many Requests
-            500,  # Internal Server Error
-            502,  # Bad Gateway
-            503,  # Service Unavailable
-            504,  # Gateway Timeout
-        )
+        if isinstance(exception, APIStatusError):
+            # Retry on specific HTTP status codes
+            if exception.status_code in (
+                429,  # Too Many Requests
+                500,  # Internal Server Error
+                502,  # Bad Gateway
+                503,  # Service Unavailable
+                504,  # Gateway Timeout
+            ):
+                return True
+            # Also retry on specific error messages (mid-stream errors)
+            error_str = str(exception).lower()
+            retryable_messages = [
+                "buffer overflow",
+                "midstreamfallbackerror",
+                "fallback error",
+                "serviceunavailable",
+                "connection error",
+                "timeout",
+            ]
+            if any(msg in error_str for msg in retryable_messages):
+                return True
+        # Check for ChatProviderError with retryable messages
+        if isinstance(exception, ChatProviderError):
+            error_str = str(exception).lower()
+            retryable_messages = [
+                "buffer overflow",
+                "midstreamfallbackerror",
+                "fallback error",
+                "serviceunavailable",
+                "backend buffer",
+                "no fallback model group found",
+            ]
+            if any(msg in error_str for msg in retryable_messages):
+                return True
+        return False
 
     async def _run_with_connection_recovery(
         self,

@@ -1,0 +1,29 @@
+{
+  "name": "@sahya-code/tui",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Sahya Code TUI - Terminal UI with opencode-inspired design",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ink": "^5.2.0",
+    "react": "^18.3.1",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8",
+    "yargs": "^17.7.2",
+    "chalk": "^5.4.1",
+    "marked": "^14.1.4",
+    "marked-terminal": "^7.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/ws": "^8.5.13",
+    "@types/yargs": "^17.0.33",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -932,14 +932,13 @@ class Shell:
 
 _KIMI_BLUE = "dodger_blue1"
 _SAHYA_BLUE = "dodger_blue1"
-_SAHYA_CYAN = "cyan1"
-_SAHYA_PURPLE = "purple"
-_LOGO = f"""\
-[{_SAHYA_CYAN}]╔═╗┌─┐┬ ┬┬ ┬┌─┐
-[{_SAHYA_BLUE}]╚═╗├─┤├─┤├─┤├─┤
-[{_SAHYA_PURPLE}]╚═╝┴ ┴┴ ┴┴ ┴┴ ┴
-[/{_SAHYA_PURPLE}]\
-"""
+_LOGO = Text.assemble(
+    (r"    ____________________  ___  ________       _________________________________" + "\n", _SAHYA_BLUE),
+    (r"    __  ___/__    |__  / / / \/ /__    |      __  ____/_  __ \__  __ \__  ____/" + "\n", _SAHYA_BLUE),
+    (r"    _____ \__  /| |_  /_/ /__  /__  /| |      _  /    _  / / /_  / / /_  __/   " + "\n", _SAHYA_BLUE),
+    (r"    ____/ /_  ___ |  __  / _  / _  ___ |      / /___  / /_/ /_  /_/ /_  /___   " + "\n", _SAHYA_BLUE),
+    (r"    /____/ /_/  |_/_/ /_/  /_/  /_/  |_|      \____/  \____/ /_____/ /_____/   ", _SAHYA_BLUE),
+)
 
 
 @dataclass(slots=True)
@@ -959,7 +958,7 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
     help_text = Text.from_markup("[grey50]Send /help for help information.[/grey50]")
 
     # Use Table for precise width control
-    logo = Text.from_markup(_LOGO)
+    logo = _LOGO
     table = Table(show_header=False, show_edge=False, box=None, padding=(0, 1), expand=False)
     table.add_column(justify="left")
     table.add_column(justify="left")

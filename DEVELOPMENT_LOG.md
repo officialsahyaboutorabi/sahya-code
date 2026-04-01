@@ -2,6 +2,32 @@
 
 This document tracks major development milestones and architectural decisions.
 
+## 2026-04-01 - v1.0.10 Release
+
+### Completed Work
+
+#### 1. Configuration Management Slash Commands
+**New Commands Added:**
+- `/apikey <provider>` - Interactively set API key for a provider
+- `/url <provider> [url]` - View or change base URL for a provider
+- `/provider` - Switch between configured providers interactively
+
+**Implementation Details:**
+- Commands added to both `registry` and `shell_mode_registry`
+- Config changes trigger a session reload to apply immediately
+- Interactive prompts for sensitive data (API keys use password input)
+- Provider switching includes model selection from the new provider
+
+**Files Modified:**
+- `src/sahya_code/ui/shell/slash.py` - Added three new slash commands
+
+### Use Cases
+1. **Quick Provider Switching**: Switch between LiteLLM and Ollama endpoints without editing config files
+2. **API Key Updates**: Update API keys securely without showing them in shell history
+3. **URL Changes**: Point to different instances of the same provider type
+
+---
+
 ## 2026-04-01 - v1.0.9 Release
 
 ### Completed Work

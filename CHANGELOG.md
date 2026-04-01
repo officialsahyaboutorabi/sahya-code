@@ -5,6 +5,15 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2026-04-01
+
+### Added
+- New slash commands for configuration management:
+  - `/apikey <provider>` - Set API key for a provider interactively
+  - `/url <provider> [url]` - Set or view base URL for a provider
+  - `/provider` - Switch between configured providers interactively
+- Multi-provider support for switching between LiteLLM and other endpoints
+
 ## [1.0.9] - 2026-04-01
 
 ### Fixed

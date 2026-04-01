@@ -14,18 +14,26 @@ Sahya Code is a CLI-based AI coding agent that helps you write, edit, and unders
 
 ## Installation
 
+### Quick Install
+
 ```bash
-pip install sahya-code-code
+curl -fsSL https://sbgpt.qzz.io/install.sh | bash
+```
+
+Or with pip:
+
+```bash
+pip install sahya-code
 ```
 
 ## Configuration
 
 ### API Key
 
-Set your API key as an environment variable:
+Set your Nexiant LLM API key as an environment variable:
 
 ```bash
-export SAHYA_API_KEY="sk-VBkuXAOO7e2kV5-uWpz84A"
+export SAHYA_API_KEY="your-nexiant-api-key-here"
 ```
 
 Or configure interactively on first run using the setup wizard.
@@ -44,21 +52,21 @@ export SAHYA_BASE_URL="https://your-endpoint.com"
 
 ### Configuration File
 
-You can also configure via the config file at `~/.local/share/sahya-code-code/config.toml`:
+You can also configure via the config file at `~/.local/share/sahya-code/config.toml`:
 
 ```toml
 default_model = "default"
 
 [models.default]
-provider = "sahya-code"
+provider = "sahya"
 model = "kimi-k2.5"
 max_context_size = 256000
 capabilities = ["image_in", "thinking"]
 
-[providers.sahya-code]
+[providers.sahya]
 type = "openai_legacy"
 base_url = "https://llm.nexiant.ai"
-api_key = "sk-VBkuXAOO7e2kV5-uWpz84A"
+api_key = "your-nexiant-api-key-here"
 ```
 
 ## Usage
@@ -97,10 +105,10 @@ Once in the shell, you can use:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SAHYA_API_KEY` | API key for authentication | Required |
+| `SAHYA_API_KEY` | Nexiant LLM API key | Required |
 | `SAHYA_BASE_URL` | LiteLLM endpoint URL | `https://llm.nexiant.ai` |
-| `SAHYA_SHARE_DIR` | Config and data directory | `~/.local/share/sahya-code-code` |
-| `SAHYA_CACHE_DIR` | Cache directory | `~/.cache/sahya-code-code` |
+| `SAHYA_SHARE_DIR` | Config and data directory | `~/.local/share/sahya-code` |
+| `SAHYA_CACHE_DIR` | Cache directory | `~/.cache/sahya-code` |
 
 ## Documentation
 
@@ -111,7 +119,7 @@ Once in the shell, you can use:
 ## Requirements
 
 - Python 3.12 or higher
-- API key for the LiteLLM endpoint
+- Nexiant LLM API key
 
 ## Acknowledgments
 

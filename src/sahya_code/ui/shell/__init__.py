@@ -964,20 +964,14 @@ _LOGO_MEDIUM = Text.assemble(
     (r"┃           ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝              ┃" + "\n", _SAHYA_ORANGE),
     (r"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛" + "\n", _SAHYA_ORANGE),
 )
-# Compact logo for narrow terminals
+# Compact logo for narrow terminals - just the letter S
 _LOGO_COMPACT = Text.assemble(
-    (r"┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓" + "\n", _SAHYA_ORANGE),
-    (r"┃  ███████╗ █████╗ ██╗   ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃  ██╔════╝██╔══██╗╚██╗  ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃  ███████╗███████║ ╚██╗ ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃  ╚════██║██╔══██║  ██║ ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃  ███████║██║  ██║  ██║ ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃  ╚══════╝╚═╝  ╚═╝  ╚═╝ ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃      ██████╗  ██████╗  ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃      ██╔═══╝  ██╔══╝   ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃      ██████╗  ██║      ┃" + "\n", _SAHYA_ORANGE),
-    (r"┃      ╚═════╝  ╚═╝      ┃" + "\n", _SAHYA_ORANGE),
-    (r"┗━━━━━━━━━━━━━━━━━━━━━━━━━━┛" + "\n", _SAHYA_ORANGE),
+    (r"███████╗" + "\n", _SAHYA_ORANGE),
+    (r"██╔════╝" + "\n", _SAHYA_ORANGE),
+    (r"███████╗" + "\n", _SAHYA_ORANGE),
+    (r"╚════██║" + "\n", _SAHYA_ORANGE),
+    (r"███████║" + "\n", _SAHYA_ORANGE),
+    (r"╚══════╝" + "\n", _SAHYA_ORANGE),
 )
 # Minimal logo for very narrow terminals
 _LOGO_MINIMAL = Text.assemble(

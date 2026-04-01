@@ -193,7 +193,7 @@ class Config(BaseModel):
         description="Default external editor command (e.g. 'vim', 'code --wait')",
     )
     theme: Literal["dark", "light"] = Field(
-        default="dark",
+        default="light",
         description="Terminal color theme. Use 'light' for light terminal backgrounds.",
     )
     models: dict[str, LLMModel] = Field(default_factory=dict, description="List of LLM models")

@@ -205,7 +205,7 @@ _MCP_PROMPT_LIGHT = MCPPromptColors(
 # Public API — resolve by theme name
 # ---------------------------------------------------------------------------
 
-_active_theme: ThemeName = "dark"
+_active_theme: ThemeName = "light"
 
 
 def set_active_theme(theme: ThemeName) -> None:

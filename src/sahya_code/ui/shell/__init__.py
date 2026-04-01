@@ -931,13 +931,19 @@ class Shell:
 
 
 _SAHYA_ORANGE = "#ff4f00"
-_LOGO = Text.assemble(
+# Full logo for wide terminals
+_LOGO_FULL = Text.assemble(
     (r"███████╗ █████╗ ██╗  ██╗██╗   ██╗ █████╗     ██████╗ ██████╗ ██████╗ ███████╗" + "\n", _SAHYA_ORANGE),
     (r"██╔════╝██╔══██╗██║  ██║╚██╗ ██╔╝██╔══██╗   ██╔════╝██╔═══██╗██╔══██╗██╔════╝" + "\n", _SAHYA_ORANGE),
     (r"███████╗███████║███████║ ╚████╔╝ ███████║   ██║     ██║   ██║██║  ██║█████╗  " + "\n", _SAHYA_ORANGE),
     (r"╚════██║██╔══██║██╔══██║  ╚██╔╝  ██╔══██║   ██║     ██║   ██║██║  ██║██╔══╝  " + "\n", _SAHYA_ORANGE),
     (r"███████║██║  ██║██║  ██║   ██║   ██║  ██║   ╚██████╗╚██████╔╝██████╔╝███████╗" + "\n", _SAHYA_ORANGE),
     (r"╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝    ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝" + "\n", _SAHYA_ORANGE),
+)
+# Compact robot icon for narrow terminals
+_LOGO_COMPACT = Text.assemble(
+    (r"  🤖  " + "\n", _SAHYA_ORANGE),
+    (r" Sahya " + "\n", _SAHYA_ORANGE),
 )
 
 
@@ -957,8 +963,13 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
     head = Text.from_markup("[bold]Welcome to Sahya Code CLI[/bold]")
     help_text = Text.from_markup("[grey50]Send /help for help information.[/grey50]")
 
+    # Choose logo based on terminal width
+    import shutil
+    term_width = shutil.get_terminal_size().columns
+    logo = _LOGO_COMPACT if term_width < 80 else _LOGO_FULL
+
     # Stack logo and welcome text vertically
-    rows: list[RenderableType] = [_LOGO, Text("")]
+    rows: list[RenderableType] = [logo, Text("")]
     rows.append(Group(head, help_text))
 
     if info_items:
@@ -984,6 +995,6 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
             border_style=_SAHYA_ORANGE,
             expand=True,
             padding=(1, 2),
-            style="on #1a1a2e",
+            style="on #0d0d0d",
         )
     )

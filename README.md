@@ -15,7 +15,7 @@ Sahya Code is a CLI-based AI coding agent that helps you write, edit, and unders
 ## Installation
 
 ```bash
-pip install sahya-code
+pip install sahya-code-code
 ```
 
 ## Configuration
@@ -44,18 +44,18 @@ export SAHYA_BASE_URL="https://your-endpoint.com"
 
 ### Configuration File
 
-You can also configure via the config file at `~/.local/share/sahya-code/config.toml`:
+You can also configure via the config file at `~/.local/share/sahya-code-code/config.toml`:
 
 ```toml
 default_model = "default"
 
 [models.default]
-provider = "sahya"
+provider = "sahya-code"
 model = "kimi-k2.5"
 max_context_size = 256000
 capabilities = ["image_in", "thinking"]
 
-[providers.sahya]
+[providers.sahya-code]
 type = "openai_legacy"
 base_url = "https://llm.nexiant.ai"
 api_key = "sk-VBkuXAOO7e2kV5-uWpz84A"
@@ -66,23 +66,23 @@ api_key = "sk-VBkuXAOO7e2kV5-uWpz84A"
 Start Sahya Code:
 
 ```bash
-sahya
+sahya-code
 ```
 
 Or with a specific prompt:
 
 ```bash
-sahya "Explain this codebase to me"
+sahya-code "Explain this codebase to me"
 ```
 
 ### Available Commands
 
 ```bash
-sahya --help              # Show help
-sahya --version           # Show version
-sahya web                 # Start web interface
-sahya mcp list            # List MCP servers
-sahya mcp add <name> ...  # Add MCP server
+sahya-code --help              # Show help
+sahya-code --version           # Show version
+sahya-code web                 # Start web interface
+sahya-code mcp list            # List MCP servers
+sahya-code mcp add <name> ...  # Add MCP server
 ```
 
 ### Interactive Commands
@@ -99,8 +99,8 @@ Once in the shell, you can use:
 |----------|-------------|---------|
 | `SAHYA_API_KEY` | API key for authentication | Required |
 | `SAHYA_BASE_URL` | LiteLLM endpoint URL | `https://llm.nexiant.ai` |
-| `SAHYA_SHARE_DIR` | Config and data directory | `~/.local/share/sahya-code` |
-| `SAHYA_CACHE_DIR` | Cache directory | `~/.cache/sahya-code` |
+| `SAHYA_SHARE_DIR` | Config and data directory | `~/.local/share/sahya-code-code` |
+| `SAHYA_CACHE_DIR` | Cache directory | `~/.cache/sahya-code-code` |
 
 ## Documentation
 

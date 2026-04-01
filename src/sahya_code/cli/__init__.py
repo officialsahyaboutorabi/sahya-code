@@ -58,7 +58,7 @@ def _version_callback(value: bool) -> None:
     if value:
         from sahya_code.constant import get_version
 
-        typer.echo(f"sahya, version {get_version()}")
+        typer.echo(f"sahya-code, version {get_version()}")
         raise typer.Exit()
 
 

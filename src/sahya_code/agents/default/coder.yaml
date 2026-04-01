@@ -7,19 +7,19 @@ agent:
   when_to_use: |
     Use this agent for non-trivial software engineering work that may require reading files, editing code, running commands, and returning a compact but technically complete summary to the parent agent.
   allowed_tools:
-    - "kimi_cli.tools.shell:Shell"
-    - "kimi_cli.tools.file:ReadFile"
-    - "kimi_cli.tools.file:ReadMediaFile"
-    - "kimi_cli.tools.file:Glob"
-    - "kimi_cli.tools.file:Grep"
-    - "kimi_cli.tools.file:WriteFile"
-    - "kimi_cli.tools.file:StrReplaceFile"
-    - "kimi_cli.tools.web:SearchWeb"
-    - "kimi_cli.tools.web:FetchURL"
+    - "sahya_code.tools.shell:Shell"
+    - "sahya_code.tools.file:ReadFile"
+    - "sahya_code.tools.file:ReadMediaFile"
+    - "sahya_code.tools.file:Glob"
+    - "sahya_code.tools.file:Grep"
+    - "sahya_code.tools.file:WriteFile"
+    - "sahya_code.tools.file:StrReplaceFile"
+    - "sahya_code.tools.web:SearchWeb"
+    - "sahya_code.tools.web:FetchURL"
   exclude_tools:
-    - "kimi_cli.tools.agent:Agent"
-    - "kimi_cli.tools.ask_user:AskUserQuestion"
-    - "kimi_cli.tools.todo:SetTodoList"
-    - "kimi_cli.tools.plan:ExitPlanMode"
-    - "kimi_cli.tools.plan.enter:EnterPlanMode"
+    - "sahya_code.tools.agent:Agent"
+    - "sahya_code.tools.ask_user:AskUserQuestion"
+    - "sahya_code.tools.todo:SetTodoList"
+    - "sahya_code.tools.plan:ExitPlanMode"
+    - "sahya_code.tools.plan.enter:EnterPlanMode"
   subagents:

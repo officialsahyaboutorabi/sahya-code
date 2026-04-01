@@ -15,7 +15,7 @@ def main(argv: Sequence[str] | None = None) -> int | str | None:
     if len(args) == 1 and args[0] in {"--version", "-V"}:
         from sahya_code.constant import get_version
 
-        print(f"sahya, version {get_version()}")
+        print(f"sahya-code, version {get_version()}")
         return 0
 
     from sahya_code.cli import cli

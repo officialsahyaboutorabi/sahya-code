@@ -1038,12 +1038,24 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
     # Set panel background based on theme
     panel_bg = "on #0d0d0d" if theme == "dark" else "on #fbfbfb"
 
+    # Calculate appropriate padding based on terminal width
+    # Ensure logo fits without wrapping
+    import shutil
+    term_width = shutil.get_terminal_size().columns
+    # Full logo is 80 chars wide, need at least 84 for borders + minimal padding
+    if term_width >= 84:
+        h_padding = 2
+    elif term_width >= 80:
+        h_padding = 1
+    else:
+        h_padding = 0
+
     console.print(
         Panel(
             Group(*rows),
             border_style=_SAHYA_ORANGE,
-            expand=True,
-            padding=(1, 2),
+            expand=False,  # Don't expand to full width
+            padding=(1, h_padding),
             style=panel_bg,
         )
     )

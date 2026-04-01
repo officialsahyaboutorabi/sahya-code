@@ -5,19 +5,27 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-04-01
+
+### Fixed
+- Simplified opencode-style UI - removed problematic bordered box
+- Modern prompt symbols: ❯ (normal), ◉ (thinking/plan), [shell] prefix for shell mode
+- Fixed welcome logo wrapping issues with better panel sizing
+- Clean single-line prompt with separator
+
 ## [1.1.1] - 2026-04-01
 
 ### Reverted
-- Reverted opencode-style UI changes back to original design
+- Reverted opencode-style UI changes back to original design (RESTORED in v1.1.2)
 - Original prompt symbols restored: ✨, $, 💫, 📋
 - Original toolbar layout restored
 
 ## [1.1.0] - 2026-04-01
 
 ### Changed
-- **New UI Design**: Replaced chat input with opencode-inspired style (REVERTED in v1.1.1)
-  - Bordered input box with rounded corners (╭─╮│╰─╯)
-  - Modern prompt symbols: ❯ for normal, ◉ for thinking/plan mode
+- **New UI Design**: Replaced chat input with opencode-inspired style
+  - Bordered input box with rounded corners (╭─╮│╰─╯) - REMOVED in v1.1.2
+  - Modern prompt symbols: ❯ for normal, ◉ for thinking/plan mode - KEPT in v1.1.2
   - Restyled control bar at bottom with color-coded sections
 
 ## [1.0.10] - 2026-04-01

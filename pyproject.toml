@@ -1,6 +1,6 @@
 [project]
 name = "sahya-code"
-version = "1.0.4"
+version = "1.0.6"
 description = "Sahya Code - Your AI coding companion."
 readme = "README.md"
 requires-python = ">=3.12"

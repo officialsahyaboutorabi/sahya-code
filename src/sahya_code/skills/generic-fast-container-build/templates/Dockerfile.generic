@@ -1,0 +1,39 @@
+# Generic runtime Dockerfile template
+# This template should be customized based on the specific technology stack
+# and integrated into the agentic system's build process
+
+# The base image should be defined based on the application's runtime requirements
+# Examples: node:20-slim, python:3.11-slim, openjdk:17-jre-slim, etc.
+ARG RUNTIME_BASE_IMAGE=node:20-slim
+FROM ${RUNTIME_BASE_IMAGE}
+
+# Install only runtime system dependencies
+# These should be customized based on the application's needs
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy pre-built application artifacts
+# The source paths should be customized based on the build output
+# Examples:
+#   Node.js: COPY .next/standalone            ./
+#   Python: COPY dist/                      ./
+#   Java: COPY app.jar                      ./app.jar
+COPY ${APP_ARTIFACTS_PATH:-.output/} ./
+
+# Create necessary directories
+RUN mkdir -p /app/uploads /app/logs
+
+EXPOSE ${APP_PORT:-3000}
+
+# Set the command to run the application
+# This should be customized based on the technology stack
+# Examples:
+#   Node.js: CMD ["node", "server.js"]
+#   Python: CMD ["python", "app.py"]
+#   Java: CMD ["java", "-jar", "app.jar"]
+CMD ["${APP_START_COMMAND:-node server.js}"]

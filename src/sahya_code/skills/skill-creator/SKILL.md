@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Kimi's capabilities with specialized knowledge, workflows, or tool integrations.
+description: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Sahya's capabilities with specialized knowledge, workflows, or tool integrations.
 ---
 
 # Skill Creator
@@ -9,9 +9,9 @@ This skill provides guidance for creating effective skills.
 
 ## About Skills
 
-Skills are modular, self-contained packages that extend Kimi's capabilities by providing
+Skills are modular, self-contained packages that extend Sahya's capabilities by providing
 specialized knowledge, workflows, and tools. Think of them as "onboarding guides" for specific
-domains or tasks—they transform Kimi from a general-purpose agent into a specialized agent
+domains or tasks—they transform Sahya from a general-purpose agent into a specialized agent
 equipped with procedural knowledge that no model can fully possess.
 
 ### What Skills Provide
@@ -27,7 +27,7 @@ equipped with procedural knowledge that no model can fully possess.
 
 The context window is a public good. Skills share the context window with everything else Kimi needs: system prompt, conversation history, other Skills' metadata, and the actual user request.
 
-**Default assumption: Kimi is already very smart.** Only add context Kimi doesn't already have. Challenge each piece of information: "Does Kimi really need this explanation?" and "Does this paragraph justify its token cost?"
+**Default assumption: Sahya is already very smart.** Only add context Sahya doesn't already have. Challenge each piece of information: "Does Sahya really need this explanation?" and "Does this paragraph justify its token cost?"
 
 Prefer concise examples over verbose explanations.
 
@@ -41,7 +41,7 @@ Match the level of specificity to the task's fragility and variability:
 
 **Low freedom (specific scripts, few parameters)**: Use when operations are fragile and error-prone, consistency is critical, or a specific sequence must be followed.
 
-Think of Kimi as exploring a path: a narrow bridge with cliffs needs specific guardrails (low freedom), while an open field allows many routes (high freedom).
+Think of Sahya as exploring a path: a narrow bridge with cliffs needs specific guardrails (low freedom), while an open field allows many routes (high freedom).
 
 ### Anatomy of a Skill
 
@@ -141,7 +141,7 @@ Extract text with pdfplumber:
 - **Examples**: See [EXAMPLES.md](EXAMPLES.md) for common patterns
 ```
 
-Kimi loads FORMS.md, REFERENCE.md, or EXAMPLES.md only when needed.
+Sahya loads FORMS.md, REFERENCE.md, or EXAMPLES.md only when needed.
 
 **Pattern 2: Domain-specific organization**
 
@@ -170,7 +170,7 @@ cloud-deploy/
     └── azure.md (Azure deployment patterns)
 ```
 
-When the user chooses AWS, Kimi only reads aws.md.
+When the user chooses AWS, Sahya only reads aws.md.
 
 **Pattern 3: Conditional details**
 
@@ -191,7 +191,7 @@ For simple edits, modify the XML directly.
 **For OOXML details**: See [OOXML.md](OOXML.md)
 ```
 
-Kimi reads REDLINING.md or OOXML.md only when the user needs those features.
+Sahya reads REDLINING.md or OOXML.md only when the user needs those features.
 
 **Important guidelines:**
 
@@ -200,12 +200,12 @@ Kimi reads REDLINING.md or OOXML.md only when the user needs those features.
 
 ## Skill Locations and Discovery
 
-Kimi Code CLI loads skills in layers (built-in -> user -> project). Within each layer, it uses the
+Sahya Code CLI loads skills in layers (built-in -> user -> project). Within each layer, it uses the
 first existing directory in priority order. Built-in skills only load for LocalKaos or ACPKaos.
 
 **User level** (by priority):
 - `~/.config/agents/skills/` (recommended)
-- `~/.kimi/skills/`
+- `~/.sahya/skills/`
 - `~/.claude/skills/`
 
 **Project level**:
@@ -290,7 +290,7 @@ After initialization, customize the SKILL.md and add resources as needed.
 
 ### Step 4: Edit the Skill
 
-When editing the (newly-generated or existing) skill, remember that the skill is being created for another instance of Kimi to use. Include information that would be beneficial and non-obvious to Kimi. Consider what procedural knowledge, domain-specific details, or reusable assets would help another Kimi instance execute these tasks more effectively.
+When editing the (newly-generated or existing) skill, remember that the skill is being created for another instance of Sahya to use. Include information that would be beneficial and non-obvious to Sahya. Consider what procedural knowledge, domain-specific details, or reusable assets would help another Kimi instance execute these tasks more effectively.
 
 #### Learn Proven Design Patterns
 

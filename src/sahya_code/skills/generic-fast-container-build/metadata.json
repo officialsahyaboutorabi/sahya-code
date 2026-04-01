@@ -1,0 +1,26 @@
+{
+  "name": "fast-container-build-generic",
+  "version": "1.0.0",
+  "description": "Generic methodology for accelerating container builds by separating compilation from packaging",
+  "author": "Adapted from original fast-container-build skill",
+  "license": "MIT",
+  "tags": [
+    "container",
+    "build-optimization",
+    "agentic-systems",
+    "generic",
+    "multi-language"
+  ],
+  "requirements": [
+    "Container runtime (Docker/Podman)",
+    "Ability to mount volumes",
+    "Shell execution capability"
+  ],
+  "files": {
+    "SKILL.md": "Main documentation and generic methodology",
+    "README.md": "Quick start guide for agentic systems",
+    "templates/": {
+      "generic-build-template.sh": "Generic build orchestration template"
+    }
+  }
+}

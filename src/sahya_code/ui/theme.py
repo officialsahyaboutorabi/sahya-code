@@ -113,25 +113,6 @@ _PROMPT_STYLE_DARK = {
     "slash-completion-menu.meta": "fg:#7c8594",
     "slash-completion-menu.command.current": "fg:#6fb7ff bold",
     "slash-completion-menu.meta.current": "fg:#56a4ff",
-    # Opencode-style input box
-    "input-box.border": "fg:#3d3d3d",
-    "input-box.border-focus": "fg:#4f9fff",
-    "input-box.background": "bg:#1a1a1a",
-    "input-box.shadow": "fg:#2a2a2a",
-    "prompt-symbol": "fg:#4f9fff bold",
-    "prompt-symbol-thinking": "fg:#a855f7 bold",
-    "prompt-symbol-plan": "fg:#f59e0b bold",
-    "prompt-symbol-shell": "fg:#10b981 bold",
-    # Control bar (opencode-style)
-    "control-bar": "fg:#9ca3af",
-    "control-bar.active": "fg:#e5e7eb bold",
-    "control-bar.button": "fg:#6b7280",
-    "control-bar.button-hover": "fg:#9ca3af",
-    "control-bar.separator": "fg:#374151",
-    "control-bar.agent": "fg:#60a5fa",
-    "control-bar.model": "fg:#a78bfa",
-    "control-bar.variant": "fg:#34d399",
-    "control-bar.mode": "fg:#fbbf24",
 }
 
 _PROMPT_STYLE_LIGHT = {
@@ -146,25 +127,6 @@ _PROMPT_STYLE_LIGHT = {
     "slash-completion-menu.meta": "fg:#6b7280",
     "slash-completion-menu.command.current": "fg:#1d4ed8 bold",
     "slash-completion-menu.meta.current": "fg:#2563eb",
-    # Opencode-style input box
-    "input-box.border": "fg:#d1d5db",
-    "input-box.border-focus": "fg:#3b82f6",
-    "input-box.background": "bg:#f9fafb",
-    "input-box.shadow": "fg:#e5e7eb",
-    "prompt-symbol": "fg:#2563eb bold",
-    "prompt-symbol-thinking": "fg:#9333ea bold",
-    "prompt-symbol-plan": "fg:#d97706 bold",
-    "prompt-symbol-shell": "fg:#059669 bold",
-    # Control bar (opencode-style)
-    "control-bar": "fg:#6b7280",
-    "control-bar.active": "fg:#111827 bold",
-    "control-bar.button": "fg:#9ca3af",
-    "control-bar.button-hover": "fg:#6b7280",
-    "control-bar.separator": "fg:#e5e7eb",
-    "control-bar.agent": "fg:#3b82f6",
-    "control-bar.model": "fg:#8b5cf6",
-    "control-bar.variant": "fg:#10b981",
-    "control-bar.mode": "fg:#f59e0b",
 }
 
 

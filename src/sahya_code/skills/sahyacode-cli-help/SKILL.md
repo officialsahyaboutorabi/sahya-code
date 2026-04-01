@@ -1,17 +1,16 @@
 ---
 name: sahyacode-cli-help
-description: Answer Sahya Code CLI usage, configuration, and troubleshooting questions. Use when user asks about Sahya Code CLI installation, setup, configuration, slash commands, keyboard shortcuts, MCP integration, providers, environment variables, how something works internally, or any questions about Sahya Code CLI itself.
+description: Answer Sahya Code CLI usage, configuration, and troubleshooting questions. Use when user asks about Sahya Code CLI installation, setup, configuration, slash commands, keyboard shortcuts, MCP integration, providers, environment variables, or any questions about Sahya Code CLI itself.
 ---
 
 # Sahya Code CLI Help
 
-Help users with Sahya Code CLI questions by consulting documentation and source code.
+Help users with Sahya Code CLI questions.
 
 ## Strategy
 
-1. **Prefer official documentation** for most questions
-2. **Read local source** when in sahya-code project itself, or when user is developing with sahya-code as a library (e.g., importing from `sahya_code` in their code)
-3. **Clone and explore source** for complex internals not covered in docs - **ask user for confirmation first**
+1. **Read local source** when in sahya-code project itself
+2. **Clone and explore source** for complex internals - **ask user for confirmation first**
 
 ## Documentation
 
@@ -22,6 +21,7 @@ Base URL: `https://github.com/officialsahyaboutorabi/sahya-code`
 | Topic | Location |
 |-------|----------|
 | Installation, first run | `README.md` |
+| Architecture | `ARCHITECTURE.md` |
 | Config files | `ARCHITECTURE.md` |
 | Providers, models | `ARCHITECTURE.md` |
 | Environment variables | `README.md` |

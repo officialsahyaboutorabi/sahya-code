@@ -385,9 +385,12 @@ def _select_default_model_and_thinking(models: list[ModelInfo]) -> tuple[ModelIn
     if not models:
         return None
     selected_model = models[0]
-    capabilities = selected_model.capabilities
-    thinking = "thinking" in capabilities or "always_thinking" in capabilities
-    return selected_model, thinking
+    # NOTE: Temporarily disabled - LiteLLM reports supports_reasoning=true
+    # but doesn't support reasoning_effort parameter for kimi-k2.5
+    # capabilities = selected_model.capabilities
+    # thinking = "thinking" in capabilities or "always_thinking" in capabilities
+    # return selected_model, thinking
+    return selected_model, False
 
 
 def _apply_kimi_code_config(

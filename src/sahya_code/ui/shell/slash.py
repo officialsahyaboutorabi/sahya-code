@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 from prompt_toolkit.shortcuts.choice_input import ChoiceInput
 
 from sahya_code import logger
-from sahya_code.auth.platforms import get_platform_name_for_provider, refresh_managed_models
+from sahya_code.auth.platforms import get_platform_name_for_provider, refresh_managed_models, refresh_openai_legacy_models
 from sahya_code.cli import Reload, SwitchToVis, SwitchToWeb
 from sahya_code.config import load_config, save_config
 from sahya_code.exception import ConfigError
@@ -98,7 +98,7 @@ def help(app: Shell, args: str):
     renderables.append(
         BulletColumns(
             Text(
-                "Sure, Kimi is ready to help! "
+                "Sure, Sahya is ready to help! "
                 "Just send me messages and I will help you get things done!"
             ),
         )
@@ -153,6 +153,7 @@ async def model(app: Shell, args: str):
     config = soul.runtime.config
 
     await refresh_managed_models(config)
+    await refresh_openai_legacy_models(config)
 
     if not config.models:
         console.print('[yellow]No models configured, send "/login" to login.[/yellow]')
@@ -395,7 +396,7 @@ def changelog(app: Shell, args: str):
 @registry.command
 @shell_mode_registry.command
 async def feedback(app: Shell, args: str):
-    """Submit feedback to make Kimi Code CLI better"""
+    """Submit feedback to make Sahya Code CLI better"""
     import platform
     import webbrowser
 

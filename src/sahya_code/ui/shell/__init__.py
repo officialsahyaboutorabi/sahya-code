@@ -263,6 +263,13 @@ class Shell:
             from sahya_code.ui.theme import set_active_theme
 
             set_active_theme(self.soul.runtime.config.theme)
+            
+            # Fetch available models from openai_legacy providers (LiteLLM, etc.)
+            from sahya_code.auth.platforms import refresh_openai_legacy_models
+            try:
+                await refresh_openai_legacy_models(self.soul.runtime.config)
+            except Exception as exc:
+                logger.debug("Failed to refresh openai_legacy models on startup: {exc}", exc=exc)
 
         if command is not None:
             # run single command and exit
@@ -960,7 +967,11 @@ class WelcomeInfoItem:
 
 
 def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
-    head = Text.from_markup("[bold]Welcome to Sahya Code CLI[/bold]")
+    from sahya_code.ui.theme import get_active_theme
+
+    theme = get_active_theme()
+    text_color = "#ffffff" if theme == "dark" else "#000000"
+    head = Text.from_markup(f"[bold {text_color}]Welcome to Sahya Code CLI[/]")
     help_text = Text.from_markup("[grey50]Send /help for help information.[/grey50]")
 
     # Choose logo based on terminal width
@@ -989,12 +1000,15 @@ def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
                 )
             )
 
+    # Set panel background based on theme
+    panel_bg = "on #0d0d0d" if theme == "dark" else "on #fbfbfb"
+
     console.print(
         Panel(
             Group(*rows),
             border_style=_SAHYA_ORANGE,
             expand=True,
             padding=(1, 2),
-            style="on #0d0d0d",
+            style=panel_bg,
         )
     )

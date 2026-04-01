@@ -26,8 +26,10 @@ class ModelInfo(BaseModel):
     def capabilities(self) -> set[ModelCapability]:
         """Derive capabilities from model info."""
         caps: set[ModelCapability] = set()
-        if self.supports_reasoning:
-            caps.add("thinking")
+        # NOTE: Temporarily disabled - LiteLLM reports supports_reasoning=true 
+        # but doesn't support reasoning_effort parameter for kimi-k2.5
+        # if self.supports_reasoning:
+        #     caps.add("thinking")
         # Models with "thinking" in name are always-thinking
         if "thinking" in self.id.lower():
             caps.update(("thinking", "always_thinking"))
@@ -288,6 +290,166 @@ def _apply_models(
 
     if config.default_model and config.default_model not in config.models:
         config.default_model = next(iter(config.models), "")
+        changed = True
+
+    return changed
+
+
+# OpenAI Legacy provider model fetching (for LiteLLM, etc.)
+# Provider key suffix for openai_legacy providers
+OPENAI_LEGACY_PROVIDER_KEY = "openai_legacy"
+
+
+def is_openai_legacy_provider_key(key: str) -> bool:
+    """Check if a provider key is an openai_legacy provider."""
+    return key == OPENAI_LEGACY_PROVIDER_KEY or key.endswith(f"_{OPENAI_LEGACY_PROVIDER_KEY}")
+
+
+def openai_legacy_model_key(provider_key: str, model_id: str) -> str:
+    """Generate a unique model key for openai_legacy providers."""
+    return f"{provider_key}:{model_id}"
+
+
+async def refresh_openai_legacy_models(config: Config) -> bool:
+    """Fetch and update models for openai_legacy providers (LiteLLM, etc.).
+    
+    Similar to refresh_managed_models but for openai_legacy type providers.
+    Returns True if any models were added or updated.
+    """
+    if not config.is_from_default_location:
+        return False
+
+    # Find openai_legacy providers
+    openai_legacy_providers = {
+        key: provider for key, provider in config.providers.items() 
+        if provider.type == "openai_legacy"
+    }
+    if not openai_legacy_providers:
+        return False
+
+    changed = False
+    updates: list[tuple[str, list[ModelInfo]]] = []
+    
+    for provider_key, provider in openai_legacy_providers.items():
+        api_key = provider.api_key.get_secret_value()
+        if not api_key:
+            logger.warning(
+                "Missing API key for openai_legacy provider: {provider}",
+                provider=provider_key,
+            )
+            continue
+            
+        try:
+            models = await _list_models_for_provider(provider.base_url, api_key)
+        except Exception as exc:
+            logger.error(
+                "Failed to fetch models for {provider}: {error}",
+                provider=provider_key,
+                error=exc,
+            )
+            continue
+
+        updates.append((provider_key, models))
+        if _apply_openai_legacy_models(config, provider_key, models):
+            changed = True
+
+    if changed:
+        config_for_save = load_config()
+        for provider_key, models in updates:
+            _apply_openai_legacy_models(config_for_save, provider_key, models)
+        save_config(config_for_save)
+        
+    return changed
+
+
+async def _list_models_for_provider(base_url: str, api_key: str) -> list[ModelInfo]:
+    """Fetch models from an openai_legacy provider's /v1/models endpoint."""
+    async with new_client_session() as session:
+        models_url = f"{base_url.rstrip('/')}/v1/models"
+        try:
+            async with session.get(
+                models_url,
+                headers={"Authorization": f"Bearer {api_key}"},
+                raise_for_status=True,
+            ) as response:
+                resp_json = await response.json()
+        except aiohttp.ClientError as exc:
+            raise ValueError(f"Failed to fetch models from {base_url}: {exc}")
+
+    data = resp_json.get("data")
+    if not isinstance(data, list):
+        raise ValueError(f"Unexpected models response from {base_url}")
+
+    result: list[ModelInfo] = []
+    for item in cast(list[dict[str, Any]], data):
+        model_id = item.get("id")
+        if not model_id:
+            continue
+        # Filter out embedding models (they're not for chat)
+        if any(x in model_id.lower() for x in ["embed", "embedding", "jina", "nomic", "mxbai", "snowflake"]):
+            continue
+        result.append(
+            ModelInfo(
+                id=str(model_id),
+                context_length=int(item.get("context_length") or 128000),  # Default to 128k
+                supports_reasoning=bool(item.get("supports_reasoning")),
+                supports_image_in=bool(item.get("supports_image_in")),
+                supports_video_in=bool(item.get("supports_video_in")),
+            )
+        )
+    return result
+
+
+def _apply_openai_legacy_models(
+    config: Config,
+    provider_key: str,
+    models: list[ModelInfo],
+) -> bool:
+    """Apply fetched models to config for openai_legacy providers.
+    
+    Similar to _apply_models but uses openai_legacy naming convention.
+    """
+    changed = False
+    model_keys: list[str] = []
+
+    for model in models:
+        model_key = openai_legacy_model_key(provider_key, model.id)
+        model_keys.append(model_key)
+
+        existing = config.models.get(model_key)
+        capabilities = model.capabilities or None
+
+        if existing is None:
+            config.models[model_key] = LLMModel(
+                provider=provider_key,
+                model=model.id,
+                max_context_size=model.context_length,
+                capabilities=capabilities,
+            )
+            changed = True
+            continue
+
+        if existing.provider != provider_key:
+            existing.provider = provider_key
+            changed = True
+        if existing.model != model.id:
+            existing.model = model.id
+            changed = True
+        if existing.max_context_size != model.context_length:
+            existing.max_context_size = model.context_length
+            changed = True
+        if existing.capabilities != capabilities:
+            existing.capabilities = capabilities
+            changed = True
+
+    # Clean up removed models
+    model_keys_set = set(model_keys)
+    for key, model in list(config.models.items()):
+        if model.provider != provider_key:
+            continue
+        if key in model_keys_set:
+            continue
+        del config.models[key]
         changed = True
 
     return changed

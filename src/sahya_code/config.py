@@ -236,7 +236,7 @@ def get_default_config() -> Config:
                 provider="sahya",
                 model="kimi-k2.5",
                 max_context_size=256000,
-                capabilities={"image_in", "thinking"},
+                capabilities={"image_in"},
             )
         },
         providers={

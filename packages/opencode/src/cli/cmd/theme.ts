@@ -441,17 +441,32 @@ async function editTheme() {
   const customThemes = await listCustomThemes()
   const allThemes = { ...DEFAULT_THEMES, ...customThemes }
   
-  const themeNames = Object.keys(customThemes).sort()
+  // Combine default and custom themes for selection
+  const defaultNames = Object.keys(DEFAULT_THEMES).sort()
+  const customNames = Object.keys(customThemes).sort()
   
-  if (themeNames.length === 0) {
-    prompts.log.warn("No custom themes found. Create one first with 'sahyacode theme create'")
+  const allThemeOptions = [
+    ...defaultNames.map((name) => ({ 
+      label: `${name} (built-in)`, 
+      value: name,
+      group: "Built-in Themes"
+    })),
+    ...customNames.map((name) => ({ 
+      label: `${name} (custom)`, 
+      value: name,
+      group: "Custom Themes"
+    })),
+  ]
+  
+  if (allThemeOptions.length === 0) {
+    prompts.log.warn("No themes found. Create one first with 'sahyacode theme create'")
     prompts.outro("Done")
     return
   }
   
   const selected = await prompts.select({
     message: "Select theme to edit:",
-    options: themeNames.map((name) => ({ label: name, value: name })),
+    options: allThemeOptions,
   })
   
   if (prompts.isCancel(selected)) {
@@ -459,7 +474,9 @@ async function editTheme() {
     return
   }
   
-  const theme = customThemes[selected]
+  let themeName = selected
+  const isDefaultTheme = selected in DEFAULT_THEMES && !(selected in customThemes)
+  const theme = allThemes[selected]
   const currentColors: Record<string, ColorValue> = {}
   
   // Extract current colors from theme
@@ -474,16 +491,61 @@ async function editTheme() {
     }
   }
   
-  prompts.log.message(`\nEditing theme: ${selected}\n`)
+  // Handle default theme editing
+  if (isDefaultTheme) {
+    prompts.log.message(`\n"${selected}" is a built-in theme. Creating a customizable copy...\n`)
+    
+    const copyOption = await prompts.select({
+      message: "How would you like to save this theme?",
+      options: [
+        { label: `Save as "${selected}" (override built-in)`, value: "same" },
+        { label: "Save with a new name", value: "new" },
+      ],
+    })
+    
+    if (prompts.isCancel(copyOption)) {
+      prompts.outro("Cancelled")
+      return
+    }
+    
+    if (copyOption === "new") {
+      const newName = await prompts.text({
+        message: "New theme name:",
+        placeholder: `${selected}-custom`,
+        validate: (value) => {
+          if (!value) return "Required"
+          if (!value.match(/^[a-z0-9-]+$/)) return "Use lowercase letters, numbers, and hyphens only"
+          if (value in DEFAULT_THEMES) return "Cannot use built-in theme name"
+          return undefined
+        },
+      })
+      
+      if (prompts.isCancel(newName)) {
+        prompts.outro("Cancelled")
+        return
+      }
+      
+      // Update themeName for saving
+      themeName = newName
+    }
+  }
+  
+  prompts.log.message(`\nEditing theme: ${themeName}\n`)
   
   // Let user pick which colors to edit
+  const editModeOptions: any[] = [
+    { label: "Edit specific colors", value: "specific" },
+    { label: "Edit all colors", value: "all" },
+  ]
+  
+  // Only show duplicate option for custom themes
+  if (!isDefaultTheme || themeName in customThemes) {
+    editModeOptions.push({ label: "Duplicate and modify", value: "duplicate" })
+  }
+  
   const editMode = await prompts.select({
     message: "What would you like to do?",
-    options: [
-      { label: "Edit specific colors", value: "specific" },
-      { label: "Edit all colors", value: "all" },
-      { label: "Duplicate and modify", value: "duplicate" },
-    ],
+    options: editModeOptions,
   })
   
   if (prompts.isCancel(editMode)) {
@@ -544,21 +606,32 @@ async function editTheme() {
   }
   
   // Generate and save updated theme
-  const updatedTheme = generateTheme(selected, currentColors)
+  const updatedTheme = generateTheme(themeName, currentColors)
   
-  // Find and update the theme file
+  // Find existing theme file or save to global themes
   const dirs = [
     path.join(Global.Path.config, "themes"),
     path.join(process.cwd(), ".sahyacode", "themes"),
   ]
   
+  let saved = false
   for (const dir of dirs) {
-    const themePath = path.join(dir, `${selected}.json`)
+    const themePath = path.join(dir, `${themeName}.json`)
     if (await Filesystem.exists(themePath)) {
       await Filesystem.write(themePath, JSON.stringify(updatedTheme, null, 2))
-      prompts.log.success(`Theme "${selected}" updated!`)
+      prompts.log.success(`Theme "${themeName}" updated!`)
+      saved = true
       break
     }
+  }
+  
+  // If not saved (editing a default theme), save to global themes
+  if (!saved) {
+    const themesDir = await getThemesDir(true)
+    const themePath = path.join(themesDir, `${themeName}.json`)
+    await Filesystem.write(themePath, JSON.stringify(updatedTheme, null, 2))
+    prompts.log.success(`Theme "${themeName}" saved!`)
+    prompts.log.info(`This custom theme will override the built-in "${themeName}" theme`)
   }
   
   prompts.outro("Done!")

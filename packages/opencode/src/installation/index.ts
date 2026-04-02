@@ -258,7 +258,10 @@ export namespace Installation {
           const response = yield* httpOk.execute(HttpClientRequest.get(versionUrl))
           const versionText = yield* response.text
           const version = versionText.trim()
-          return version.startsWith("v") ? version : `v${version}`
+          // Always return with 'v' prefix for consistency
+          const versionWithV = version.startsWith("v") ? version : `v${version}`
+          log.info("latest version from version.txt", { version: versionWithV })
+          return versionWithV
         }, Effect.orDie)
 
         const upgradeImpl = Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {

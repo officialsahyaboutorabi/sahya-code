@@ -7,37 +7,37 @@ import { TuiPluginRuntime } from "../../plugin"
 
 import { getScrollAcceleration } from "../../util/scroll"
 
-// Small Ghost ASCII art frames for sidebar
+// Tiny Ghost ASCII art frames for sidebar (fits in 38 char width)
 const ghostFrames = [
   [
-    " +==*%%%%*==+ ",
-    "+**++    ++**+",
-    "**+=  ** =+**",
-    "**oo $@@$ oo**",
-    "ox** $$$$ **xo",
-    "==+~ @@@@ ~+==",
-    "x+++ $$$$ +++x",
-    "==   @@@@   ==",
+    "   +==*%%*==+   ",
+    "  +*++    ++*+  ",
+    "  *+=  ** =+*   ",
+    "  *oo $@@$ oo*  ",
+    "  x** $$$$ **x  ",
+    "  =+~ @@@@ ~+=  ",
+    "  +++ $$$$ +++  ",
+    "  =   @@@@   =  ",
   ],
   [
-    " +==*%%%%*==+ ",
-    "+**++    ++**+",
-    "**+=  ** =+**",
-    "**oo $@@$ oo**",
-    "ox** @@@@ **xo",
-    "==+~ $$$$ ~+==",
-    "x+++ @@@@ +++x",
-    "==   $$$$   ==",
+    "   +==*%%*==+   ",
+    "  +*++    ++*+  ",
+    "  *+=  ** =+*   ",
+    "  *oo $@@$ oo*  ",
+    "  x** @@@@ **x  ",
+    "  =+~ $$$$ ~+=  ",
+    "  +++ @@@@ +++  ",
+    "  =   $$$$   =  ",
   ],
   [
-    " +==*%%%%*==+ ",
-    "+**++    ++**+",
-    "**+=  ** =+**",
-    "**oo $@@$ oo**",
-    "ox** $$$$ **xo",
-    "==+~ @@@@ ~+==",
-    "x+++ $$$$ +++x",
-    "==   @@@@   ==",
+    "   +==*%%*==+   ",
+    "  +*++    ++*+  ",
+    "  *+=  ** =+*   ",
+    "  *oo $@@$ oo*  ",
+    "  x** $$$$ **x  ",
+    "  =+~ @@@@ ~+=  ",
+    "  +++ $$$$ +++  ",
+    "  =   @@@@   =  ",
   ],
 ]
 
@@ -51,7 +51,7 @@ function GhostSidebar(props: { primary: string }) {
   onCleanup(() => clearInterval(interval))
 
   return (
-    <box flexDirection="column" alignItems="center" paddingY={1} opacity={0.3}>
+    <box flexDirection="column" alignItems="center" paddingY={1} opacity={0.25}>
       {ghostFrames[frameIndex()].map((line) => (
         <text fg={props.primary}>{line}</text>
       ))}

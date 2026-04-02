@@ -2,6 +2,8 @@ import type { Argv } from "yargs"
 import { UI } from "../ui"
 import * as prompts from "@clack/prompts"
 import { Installation } from "../../installation"
+import { Filesystem } from "../../util/filesystem"
+import path from "path"
 
 export const UpgradeCommand = {
   command: "upgrade [target]",
@@ -42,7 +44,14 @@ export const UpgradeCommand = {
       }
     }
     prompts.log.info("Using method: " + method)
-    const target = args.target ? args.target.replace(/^v/, "") : await Installation.latest()
+    
+    // Get target version - keep 'v' prefix
+    let target: string
+    if (args.target) {
+      target = args.target.startsWith("v") ? args.target : `v${args.target}`
+    } else {
+      target = await Installation.latest()
+    }
 
     if (Installation.VERSION === target) {
       prompts.log.warn(`sahyacode upgrade skipped: ${target} is already installed`)

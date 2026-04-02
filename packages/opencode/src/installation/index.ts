@@ -253,13 +253,12 @@ export namespace Installation {
             return data.version
           }
 
-          const response = yield* httpOk.execute(
-            HttpClientRequest.get("https://api.github.com/repos/officialsahyaboutorabi/sahya-code/releases/latest").pipe(
-              HttpClientRequest.acceptJson,
-            ),
-          )
-          const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
-          return data.tag_name.replace(/^v/, "")
+          // Read version from version.txt file (keeps 'v' prefix)
+          const versionUrl = "https://raw.githubusercontent.com/officialsahyaboutorabi/sahya-code/main/version.txt"
+          const response = yield* httpOk.execute(HttpClientRequest.get(versionUrl))
+          const versionText = yield* response.text
+          const version = versionText.trim()
+          return version.startsWith("v") ? version : `v${version}`
         }, Effect.orDie)
 
         const upgradeImpl = Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {

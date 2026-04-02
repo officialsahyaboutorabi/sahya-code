@@ -4,7 +4,10 @@ set -e
 # Sahya Code Installation Script
 # Install with: curl -fsSL https://sbgpt.qzz.io/install.sh | bash
 
-REPO="officialsahyaboutorabi/sahya-code"
+# Download binaries from original opencode repository (anomalyco/opencode)
+# But install locally as sahyacode
+SOURCE_REPO="anomalyco/opencode"
+INSTALL_NAME="sahyacode"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-latest}"
 
@@ -98,12 +101,13 @@ get_download_url() {
         fi
     fi
     
-    local binary_name="sahyacode-${platform}-${arch}${suffix}"
+    # Binary names use 'opencode' prefix in the source repo
+    local binary_name="opencode-${platform}-${arch}${suffix}"
     
     if [ "$VERSION" = "latest" ]; then
-        echo "https://github.com/${REPO}/releases/latest/download/${binary_name}.tar.gz"
+        echo "https://github.com/${SOURCE_REPO}/releases/latest/download/${binary_name}.tar.gz"
     else
-        echo "https://github.com/${REPO}/releases/download/${VERSION}/${binary_name}.tar.gz"
+        echo "https://github.com/${SOURCE_REPO}/releases/download/${VERSION}/${binary_name}.tar.gz"
     fi
 }
 
@@ -128,26 +132,26 @@ main() {
     
     # Download and extract
     if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_DIR/sahyacode.tar.gz"
+        curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_DIR/${INSTALL_NAME}.tar.gz"
     elif command -v wget >/dev/null 2>&1; then
-        wget -q "$DOWNLOAD_URL" -O "$TEMP_DIR/sahyacode.tar.gz"
+        wget -q "$DOWNLOAD_URL" -O "$TEMP_DIR/${INSTALL_NAME}.tar.gz"
     else
         echo "Error: curl or wget is required"
         exit 1
     fi
     
     echo "Extracting..."
-    tar -xzf "$TEMP_DIR/sahyacode.tar.gz" -C "$TEMP_DIR"
+    tar -xzf "$TEMP_DIR/${INSTALL_NAME}.tar.gz" -C "$TEMP_DIR"
     
-    # Install binary
-    if [ -f "$TEMP_DIR/sahyacode" ]; then
-        mv "$TEMP_DIR/sahyacode" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR/sahyacode"
-    elif [ -f "$TEMP_DIR/bin/sahyacode" ]; then
-        mv "$TEMP_DIR/bin/sahyacode" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR/sahyacode"
+    # Install binary (source is 'opencode', install as 'sahyacode')
+    if [ -f "$TEMP_DIR/opencode" ]; then
+        mv "$TEMP_DIR/opencode" "$INSTALL_DIR/${INSTALL_NAME}"
+        chmod +x "$INSTALL_DIR/${INSTALL_NAME}"
+    elif [ -f "$TEMP_DIR/bin/opencode" ]; then
+        mv "$TEMP_DIR/bin/opencode" "$INSTALL_DIR/${INSTALL_NAME}"
+        chmod +x "$INSTALL_DIR/${INSTALL_NAME}"
     else
-        echo "Error: Could not find sahyacode binary in archive"
+        echo "Error: Could not find opencode binary in archive"
         exit 1
     fi
     

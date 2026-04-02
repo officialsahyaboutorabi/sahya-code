@@ -6,7 +6,7 @@ set -e
 
 # Download binaries from original opencode repository (anomalyco/opencode)
 # But install locally as sahyacode
-SOURCE_REPO="anomalyco/opencode"
+SOURCE_REPO="officialsahyaboutorabi/sahya-code"
 INSTALL_NAME="sahyacode"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-latest}"

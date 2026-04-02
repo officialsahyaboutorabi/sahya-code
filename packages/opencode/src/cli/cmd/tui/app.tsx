@@ -863,14 +863,14 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     toast.show({
       variant: "info",
       title: "Update Available",
-      message: `SahyaCode v${version} is available. Press Ctrl+P and type /upgrade to update.`,
+      message: `SahyaCode ${version} is available. Press Ctrl+P and type /upgrade to update.`,
       duration: 10000,
     })
 
     const choice = await DialogConfirm.show(
       dialog,
       `Update Available`,
-      `A new release v${version} is available. Would you like to update now?`,
+      `A new release ${version} is available. Would you like to update now?`,
       "skip",
     )
 

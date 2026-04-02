@@ -6,8 +6,10 @@ import { Global } from "../../global"
 import { Filesystem } from "../../util/filesystem"
 import path from "path"
 import os from "os"
+import { mkdir } from "fs/promises"
 import type { ThemeJson } from "../cmd/tui/context/theme"
-import { DEFAULT_THEMES } from "../cmd/tui/context/theme"
+import { DEFAULT_THEMES, resolveTheme } from "../cmd/tui/context/theme"
+import { RGBA } from "@opentui/core"
 
 // Color input formats supported: hex, rgb, rgba
 type ColorInput = string // hex like "#ff0000" or "ff0000"
@@ -126,17 +128,84 @@ function generateTheme(name: string, colors: Record<string, ColorValue>): ThemeJ
   }
 }
 
+// Render a live UI preview with the theme colors
+function renderLivePreview(colors: Record<string, ColorValue>, mode: "dark" | "light" = "dark") {
+  const c = (key: string, fallback: string) => colors[key]?.[mode] || fallback
+  
+  const bg = c("background", "#0d0d0d")
+  const panelBg = c("backgroundPanel", "#121212")
+  const elementBg = c("backgroundElement", "#1a1a1a")
+  const text = c("text", "#fbfbfb")
+  const textMuted = c("textMuted", "#b7b7b7")
+  const primary = c("primary", "#ff4f00")
+  const secondary = c("secondary", "#5c9cf5")
+  const accent = c("accent", "#9d7cd8")
+  const success = c("success", "#00ff88")
+  const error = c("error", "#f85149")
+  const warning = c("warning", "#ffb800")
+  const border = c("border", "#2a2a2a")
+  
+  // ANSI color helpers
+  const hexToAnsi = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `\x1b[38;2;${r};${g};${b}m`
+  }
+  const hexToAnsiBg = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `\x1b[48;2;${r};${g};${b}m`
+  }
+  const reset = "\x1b[0m"
+  const bold = "\x1b[1m"
+  
+  const T = hexToAnsi(text)
+  const Tm = hexToAnsi(textMuted)
+  const P = hexToAnsi(primary)
+  const S = hexToAnsi(secondary)
+  const A = hexToAnsi(accent)
+  const Ok = hexToAnsi(success)
+  const Err = hexToAnsi(error)
+  const Warn = hexToAnsi(warning)
+  const Bg = hexToAnsiBg(bg)
+  const PanelBg = hexToAnsiBg(panelBg)
+  const ElemBg = hexToAnsiBg(elementBg)
+  
+  console.clear()
+  console.log("")
+  console.log(`${Bg}${T}┌─────────────────────────────────────────────────────────────┐${reset}`)
+  console.log(`${Bg}${T}│  ${P}${bold}Sahya Code${reset}${Bg}${T}                                                v2.0.6 │${reset}`)
+  console.log(`${Bg}${T}├─────────────────────────────────────────────────────────────┤${reset}`)
+  console.log(`${Bg}${T}│                                                             │${reset}`)
+  console.log(`${Bg}${T}│  ${Tm}Welcome to the theme preview!${reset}                              │${reset}`)
+  console.log(`${Bg}${T}│                                                             │${reset}`)
+  console.log(`${Bg}${T}│  ${P}> ${T}What would you like to do?${reset}                                │${reset}`)
+  console.log(`${Bg}${T}│                                                             │${reset}`)
+  console.log(`${Bg}${T}│  ${Ok}●${reset}${Bg}${T} Create a new file${reset}                                         │${reset}`)
+  console.log(`${Bg}${T}│  ${Tm}○${reset}${Bg}${T} Edit existing code${reset}                                        │${reset}`)
+  console.log(`${Bg}${T}│  ${Tm}○${reset}${Bg}${T} Run a command${reset}                                           │${reset}`)
+  console.log(`${Bg}${T}│                                                             │${reset}`)
+  console.log(`${Bg}${T}├─────────────────────────────────────────────────────────────┤${reset}`)
+  console.log(`${Bg}${T}│  ${S}💡${reset}${Bg}${T} Tip: Press ${A}Ctrl+Shift+P${reset}${Bg}${T} to open the command palette${reset}     │${reset}`)
+  console.log(`${Bg}${T}└─────────────────────────────────────────────────────────────┘${reset}`)
+  console.log("")
+  console.log(`${Tm}Theme Preview (${mode} mode)${reset}`)
+  console.log(`${Tm}Press Enter to continue editing...${reset}`)
+}
+
 // Get themes directory
 async function getThemesDir(global: boolean): Promise<string> {
   if (global) {
     const dir = path.join(Global.Path.config, "themes")
-    await Filesystem.mkdir(dir, { recursive: true })
+    await mkdir(dir, { recursive: true })
     return dir
   }
   
   // Project-local
   const projectDir = path.join(process.cwd(), ".sahyacode", "themes")
-  await Filesystem.mkdir(projectDir, { recursive: true })
+  await mkdir(projectDir, { recursive: true })
   return projectDir
 }
 
@@ -244,7 +313,8 @@ async function createTheme() {
   
   const colors: Record<string, ColorValue> = {}
   
-  prompts.log.message("\n🎨 Configure Core Colors\n")
+  prompts.log.message("\n🎨 Configure Core Colors")
+  prompts.log.message("Reference: The default 'opencode' theme uses orange (#ff4f00) as primary\n")
   
   for (const colorInfo of CORE_COLORS) {
     const result = await promptColor(colorInfo)
@@ -253,6 +323,19 @@ async function createTheme() {
       return
     }
     colors[colorInfo.key] = result
+    
+    // Show live preview after key colors are set
+    if (colorInfo.key === "background" || colorInfo.key === "primary" || colorInfo.key === "text") {
+      if (Object.keys(colors).length >= 3) {
+        console.clear()
+        renderLivePreview(colors, "dark")
+        await prompts.confirm({
+          message: "Continue editing?",
+          initialValue: true,
+        })
+        console.clear()
+      }
+    }
   }
   
   // Ask if user wants to configure extended colors
@@ -322,22 +405,19 @@ async function createTheme() {
   prompts.outro("Done!")
 }
 
-// Show theme preview
+// Show theme preview with live UI render
 function showThemePreview(name: string, colors: Record<string, ColorValue>) {
   UI.empty()
   prompts.log.message(`\n👁️  Theme Preview: ${name}\n`)
   
-  // Show a simple color swatch preview
-  prompts.log.message("Dark Mode:")
-  for (const [key, value] of Object.entries(colors).slice(0, 8)) {
-    const swatch = renderColorSwatch(value.dark)
-    prompts.log.message(`  ${key.padEnd(20)} ${swatch} ${value.dark}`)
-  }
+  // Show the live UI mockup
+  renderLivePreview(colors, "dark")
   
-  prompts.log.message("\nLight Mode:")
-  for (const [key, value] of Object.entries(colors).slice(0, 8)) {
-    const swatch = renderColorSwatch(value.light)
-    prompts.log.message(`  ${key.padEnd(20)} ${swatch} ${value.light}`)
+  prompts.log.message("\nColor Swatches (Dark | Light):")
+  for (const [key, value] of Object.entries(colors).slice(0, 10)) {
+    const darkSwatch = renderColorSwatch(value.dark)
+    const lightSwatch = renderColorSwatch(value.light)
+    prompts.log.message(`  ${key.padEnd(20)} ${darkSwatch} ${value.dark}  |  ${lightSwatch} ${value.light}`)
   }
   
   UI.empty()

@@ -7,7 +7,6 @@ import {
   For,
   Match,
   on,
-  onCleanup,
   onMount,
   Show,
   Switch,
@@ -76,81 +75,6 @@ import { useTuiConfig } from "../../context/tui-config"
 import { getScrollAcceleration } from "../../util/scroll"
 
 addDefaultParsers(parsers.parsers)
-
-// Ghost ASCII art frames for background animation
-const ghostFrames = [
-  [
-    "    +++==*%%%%%%%%%%%%*==+++    ",
-    " ++****++                ++****++ ",
-    " ++**++                    ++**++ ",
-    "xx**+=    o+*%$@@@@@@$%*+o    =+**xx",
-    "xx**oo  ·=$@@@@$$$$$$$$@@@@@$=·  oo**xx",
-    " xx**   x$@@$$$$$$$$$$$$$$@@$x   **xx ",
-    " ox**  ·$@$$$$$$$$$$$$$$$$$$@$·  **xo ",
-    " ==+~  ~@@$$$$$$$$$$$$$$$$$$@@~  ~+== ",
-    " x+++  $@$$$$$$$$$$$$$$$$$$$$$$@$  +++x ",
-    " ==   ·@@$$$$$$$$$$$$$$$$$$$$$$@@·   == ",
-  ],
-  [
-    "    +++==*%%%%%%%%%%%%*==+++    ",
-    " ++****++                ++****++ ",
-    " ++**++                    ++**++ ",
-    "xx**+=   ·o*%$@@@@@@$%*o·   =+**xx",
-    "xx**oo  *$@@@@$$$$$$$$@@@@@$*  oo**xx",
-    " xx**   o$@@$$$$$$$$$$$$$$@@$o   **xx ",
-    " ox**  ~$@$$$$$$$$$$$$$$$$$$@$~  **xo ",
-    " ==+~  ~@@$$$$$$$$$$$$$$$$$$@@~  ~+== ",
-    " x+++  $@$$$$$$$$$$$$$$$$$$$$$$@$  +++x ",
-    " ==   ·@@$$$$$$$$$$$$$$$$$$$$$$@@·   == ",
-  ],
-  [
-    "    +++==*%%%%%%%%%%%%*==+++    ",
-    " ++****++                ++****++ ",
-    " ++**++                    ++**++ ",
-    "xx**+=   ~o*%$@@@@@@$%*o~   =+**xx",
-    "xx**oo  ·*$@@@@$$$$$$$$@@@@@$*·  oo**xx",
-    " xx**   +$@@$$$$$$$$$$$$$$@@$+   **xx ",
-    " ox**  ~$@$$$$$$$$$$$$$$$$$$@$~  **xo ",
-    " ==+~  ~@@$$$$$$$$$$$$$$$$$$@@~  ~+== ",
-    " x+++  $@$$$$$$$$$$$$$$$$$$$$$$@$  +++x ",
-    " ==   ·@@$$$$$$$$$$$$$$$$$$$$$$@@·   == ",
-  ],
-]
-
-function GhostBackground(props: { 
-  theme: () => { primary: string; background: string }
-  dimensions: () => { width: number; height: number }
-}) {
-  const [frameIndex, setFrameIndex] = createSignal(0)
-  
-  const interval = setInterval(() => {
-    setFrameIndex((i) => (i + 1) % ghostFrames.length)
-  }, 300)
-  
-  onCleanup(() => clearInterval(interval))
-
-  const currentFrame = createMemo(() => ghostFrames[frameIndex()])
-
-  return (
-    <box 
-      position="absolute" 
-      zIndex={0}
-      left={0}
-      top={0}
-      width={props.dimensions().width}
-      height={props.dimensions().height}
-      alignItems="center"
-      justifyContent="center"
-      opacity={0.15}
-    >
-      <box flexDirection="column" alignItems="center">
-        {currentFrame().map((line, i) => (
-          <text key={i} fg={props.theme().primary}>{line}</text>
-        ))}
-      </box>
-    </box>
-  )
-}
 
 const context = createContext<{
   width: number
@@ -1086,8 +1010,6 @@ export function Session() {
       <box flexDirection="row">
         <box flexGrow={1} paddingBottom={1} paddingLeft={2} paddingRight={2} gap={1}>
           <Show when={session()}>
-            {/* Ghost Background */}
-            <GhostBackground theme={theme} dimensions={dimensions} />
             <scrollbox
               ref={(r) => (scroll = r)}
               viewportOptions={{

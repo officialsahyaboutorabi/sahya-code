@@ -1,11 +1,63 @@
 import { useSync } from "@tui/context/sync"
-import { createMemo, Show } from "solid-js"
+import { createMemo, createSignal, onCleanup, Show } from "solid-js"
 import { useTheme } from "../../context/theme"
 import { useTuiConfig } from "../../context/tui-config"
 import { Installation } from "@/installation"
 import { TuiPluginRuntime } from "../../plugin"
 
 import { getScrollAcceleration } from "../../util/scroll"
+
+// Small Ghost ASCII art frames for sidebar
+const ghostFrames = [
+  [
+    " +==*%%%%*==+ ",
+    "+**++    ++**+",
+    "**+=  ** =+**",
+    "**oo $@@$ oo**",
+    "ox** $$$$ **xo",
+    "==+~ @@@@ ~+==",
+    "x+++ $$$$ +++x",
+    "==   @@@@   ==",
+  ],
+  [
+    " +==*%%%%*==+ ",
+    "+**++    ++**+",
+    "**+=  ** =+**",
+    "**oo $@@$ oo**",
+    "ox** @@@@ **xo",
+    "==+~ $$$$ ~+==",
+    "x+++ @@@@ +++x",
+    "==   $$$$   ==",
+  ],
+  [
+    " +==*%%%%*==+ ",
+    "+**++    ++**+",
+    "**+=  ** =+**",
+    "**oo $@@$ oo**",
+    "ox** $$$$ **xo",
+    "==+~ @@@@ ~+==",
+    "x+++ $$$$ +++x",
+    "==   @@@@   ==",
+  ],
+]
+
+function GhostSidebar(props: { primary: string }) {
+  const [frameIndex, setFrameIndex] = createSignal(0)
+  
+  const interval = setInterval(() => {
+    setFrameIndex((i) => (i + 1) % ghostFrames.length)
+  }, 400)
+  
+  onCleanup(() => clearInterval(interval))
+
+  return (
+    <box flexDirection="column" alignItems="center" paddingY={1} opacity={0.3}>
+      {ghostFrames[frameIndex()].map((line) => (
+        <text fg={props.primary}>{line}</text>
+      ))}
+    </box>
+  )
+}
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const sync = useSync()
@@ -58,9 +110,10 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
         </scrollbox>
 
         <box flexShrink={0} gap={1} paddingTop={1}>
+          <GhostSidebar primary={theme.primary} />
           <TuiPluginRuntime.Slot name="sidebar_footer" mode="single_winner" session_id={props.sessionID}>
             <text fg={theme.textMuted}>
-              <span style={{ fg: theme.success }}>•</span> <b>Open</b>
+              <span style={{ fg: theme.success }}>•</span> <b>Sahya</b>
               <span style={{ fg: theme.text }}>
                 <b>Code</b>
               </span>{" "}

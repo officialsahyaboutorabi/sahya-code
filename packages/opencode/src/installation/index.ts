@@ -254,7 +254,9 @@ export namespace Installation {
           }
 
           // Read version from version.txt file (keeps 'v' prefix)
-          const versionUrl = "https://raw.githubusercontent.com/officialsahyaboutorabi/sahya-code/main/version.txt"
+          // Add cache-busting to avoid CDN caching issues
+          const cacheBuster = Date.now()
+          const versionUrl = `https://raw.githubusercontent.com/officialsahyaboutorabi/sahya-code/main/version.txt?cb=${cacheBuster}`
           const response = yield* httpOk.execute(HttpClientRequest.get(versionUrl))
           const versionText = yield* response.text
           const version = versionText.trim()

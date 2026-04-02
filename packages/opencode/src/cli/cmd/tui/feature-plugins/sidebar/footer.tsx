@@ -1,66 +1,8 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui"
-import { createMemo, createSignal, onCleanup, Show } from "solid-js"
+import { createMemo, Show } from "solid-js"
 import { Global } from "@/global"
 
 const id = "internal:sidebar-footer"
-
-// Ghost ASCII art frames for animation
-const ghostFrames = [
-  [
-    "    +++==*%%%%%%%%%%%%*==+++    ",
-    " ++****++                ++****++ ",
-    " ++**++                    ++**++ ",
-    "xx**+=    o+*%$@@@@@@$%*+o    =+**xx",
-    "xx**oo  ·=$@@@@$$$$$$$$@@@@@$=·  oo**xx",
-    " xx**   x$@@$$$$$$$$$$$$$$@@$x   **xx ",
-    " ox**  ·$@$$$$$$$$$$$$$$$$$$@$·  **xo ",
-    " ==+~  ~@@$$$$$$$$$$$$$$$$$$@@~  ~+== ",
-    " x+++  $@$$$$$$$$$$$$$$$$$$$$$$@$  +++x ",
-    " ==   ·@@$$$$$$$$$$$$$$$$$$$$$$@@·   == ",
-  ],
-  [
-    "    +++==*%%%%%%%%%%%%*==+++    ",
-    " ++****++                ++****++ ",
-    " ++**++                    ++**++ ",
-    "xx**+=   ·o*%$@@@@@@$%*o·   =+**xx",
-    "xx**oo  *$@@@@$$$$$$$$@@@@@$*  oo**xx",
-    " xx**   o$@@$$$$$$$$$$$$$$@@$o   **xx ",
-    " ox**  ~$@$$$$$$$$$$$$$$$$$$@$~  **xo ",
-    " ==+~  ~@@$$$$$$$$$$$$$$$$$$@@~  ~+== ",
-    " x+++  $@$$$$$$$$$$$$$$$$$$$$$$@$  +++x ",
-    " ==   ·@@$$$$$$$$$$$$$$$$$$$$$$@@·   == ",
-  ],
-  [
-    "    +++==*%%%%%%%%%%%%*==+++    ",
-    " ++****++                ++****++ ",
-    " ++**++                    ++**++ ",
-    "xx**+=   ~o*%$@@@@@@$%*o~   =+**xx",
-    "xx**oo  ·*$@@@@$$$$$$$$@@@@@$*·  oo**xx",
-    " xx**   +$@@$$$$$$$$$$$$$$@@$+   **xx ",
-    " ox**  ~$@$$$$$$$$$$$$$$$$$$@$~  **xo ",
-    " ==+~  ~@@$$$$$$$$$$$$$$$$$$@@~  ~+== ",
-    " x+++  $@$$$$$$$$$$$$$$$$$$$$$$@$  +++x ",
-    " ==   ·@@$$$$$$$$$$$$$$$$$$$$$$@@·   == ",
-  ],
-]
-
-function GhostAnimation(props: { theme: () => { primary: string; text: string } }) {
-  const [frameIndex, setFrameIndex] = createSignal(0)
-  
-  const interval = setInterval(() => {
-    setFrameIndex((i) => (i + 1) % ghostFrames.length)
-  }, 200)
-  
-  onCleanup(() => clearInterval(interval))
-
-  return (
-    <box flexDirection="column" alignItems="center" paddingBottom={1}>
-      {ghostFrames[frameIndex()].map((line) => (
-        <text fg={props.theme().primary} attributes={1}>{line}</text>
-      ))}
-    </box>
-  )
-}
 
 function View(props: { api: TuiPluginApi }) {
   const theme = () => props.api.theme.current
@@ -84,7 +26,6 @@ function View(props: { api: TuiPluginApi }) {
 
   return (
     <box gap={1}>
-      <GhostAnimation theme={theme} />
       <Show when={show()}>
         <box
           backgroundColor={theme().backgroundElement}

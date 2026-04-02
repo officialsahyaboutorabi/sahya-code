@@ -36,6 +36,32 @@ curl -fsSL https://sbgpt.qzz.io/install.sh | bash
 > [!TIP]
 > The installer will detect your platform and architecture automatically.
 
+### Quick Start
+
+Sahya Code works out of the box with **Nexiant** (recommended):
+
+```bash
+# Set your API key
+export NEXIANT_API_KEY="your-api-key-here"
+
+# Start Sahya Code
+sahyacode
+```
+
+Or configure via `~/.config/sahyacode/sahyacode.json`:
+```json
+{
+  "provider": {
+    "nexiant": {
+      "options": {
+        "apiKey": "your-api-key-here"
+      }
+    }
+  },
+  "model": "nexiant/gpt-4"
+}
+```
+
 ### Installation Directory
 
 The install script respects the following priority order for the installation path:
@@ -50,11 +76,20 @@ The install script respects the following priority order for the installation pa
 SAHYACODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://sbgpt.qzz.io/install.sh | bash
 ```
 
-### Configuration
+### Providers
 
-Sahya Code supports two LLM providers:
+#### Nexiant (Recommended)
+**Endpoint:** `https://llm.nexiant.ai`
 
-**Ollama (Local)**
+The default and recommended provider for Sahya Code. Powered by LiteLLM.
+
+```bash
+export NEXIANT_API_KEY="your-api-key"
+```
+
+#### Ollama (Local)
+Run models locally on your machine.
+
 ```json
 {
   "provider": {
@@ -68,17 +103,19 @@ Sahya Code supports two LLM providers:
 }
 ```
 
-**LiteLLM (Nexiant)**
+#### LiteLLM (Generic)
+Connect to any LiteLLM-compatible endpoint.
+
 ```json
 {
   "provider": {
     "litellm": {
       "options": {
+        "baseURL": "https://your-litellm-endpoint.com",
         "apiKey": "your-api-key"
       }
     }
-  },
-  "model": "litellm/gpt-4"
+  }
 }
 ```
 
@@ -110,7 +147,8 @@ If you're interested in contributing to Sahya Code, please read our [contributin
 It's very similar to Claude Code in terms of capability. Here are the key differences:
 
 - 100% open source
-- Not coupled to any provider. Sahya Code can be used with Ollama (local models) or LiteLLM.
+- **Nexiant integration** - Works out of the box with Nexiant's LLM API
+- Not coupled to any provider - Also supports Ollama (local) and generic LiteLLM
 - Out-of-the-box LSP support
 - A focus on TUI.
 - A client/server architecture.

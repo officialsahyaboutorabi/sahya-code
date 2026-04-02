@@ -25,6 +25,7 @@ export const ProviderID = providerIdSchema.pipe(
     gitlab: schema.makeUnsafe("gitlab"),
     ollama: schema.makeUnsafe("ollama"),
     litellm: schema.makeUnsafe("litellm"),
+    nexiant: schema.makeUnsafe("nexiant"),
   })),
 )
 

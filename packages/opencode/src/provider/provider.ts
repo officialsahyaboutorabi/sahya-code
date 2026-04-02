@@ -942,6 +942,92 @@ export namespace Provider {
         },
       }
     },
+    nexiant: async (input) => {
+      // Nexiant provider - uses LiteLLM at https://llm.nexiant.ai
+      // This is the recommended/default provider for Sahya Code
+      const baseURL = "https://llm.nexiant.ai"
+      
+      const apiKey = await (async () => {
+        const envKey = Env.get("NEXIANT_API_KEY") || Env.get("SAHYA_API_KEY")
+        if (envKey) return envKey
+        const auth = await Auth.get("nexiant")
+        if (auth?.type === "api") return auth.key
+        const config = await Config.get()
+        return config.provider?.["nexiant"]?.options?.apiKey
+      })()
+
+      // Try to fetch available models from Nexiant
+      let models: Record<string, Model> = {}
+      try {
+        const response = await fetch(`${baseURL}/v1/models`, {
+          headers: apiKey ? { "Authorization": `Bearer ${apiKey}` } : {},
+          signal: AbortSignal.timeout(10000)
+        })
+        if (response.ok) {
+          const data = await response.json() as { data?: Array<{ id: string; context_window?: number }> }
+          if (data.data) {
+            for (const m of data.data) {
+              const modelId = m.id
+              models[modelId] = {
+                id: ModelID.make(modelId),
+                providerID: ProviderID.make("nexiant"),
+                name: modelId,
+                family: "nexiant",
+                api: {
+                  id: modelId,
+                  url: baseURL,
+                  npm: "@ai-sdk/openai-compatible",
+                },
+                status: "active",
+                headers: {},
+                options: {},
+                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+                limit: { context: m.context_window || 128000, output: 4096 },
+                capabilities: {
+                  temperature: true,
+                  reasoning: true,
+                  attachment: true,
+                  toolcall: true,
+                  input: {
+                    text: true,
+                    audio: false,
+                    image: true,
+                    video: false,
+                    pdf: true,
+                  },
+                  output: {
+                    text: true,
+                    audio: false,
+                    image: false,
+                    video: false,
+                    pdf: false,
+                  },
+                  interleaved: false,
+                },
+                release_date: "",
+                variants: {},
+              }
+            }
+          }
+        }
+      } catch (e) {
+        log.warn("Failed to fetch models from Nexiant", { baseURL, error: e })
+      }
+
+      return {
+        autoload: true,
+        options: {
+          baseURL: `${baseURL}/v1`,
+          apiKey: apiKey || "",
+        },
+        async getModel(sdk: any, modelID: string) {
+          return sdk.languageModel(modelID)
+        },
+        async discoverModels(): Promise<Record<string, Model>> {
+          return models
+        },
+      }
+    },
   }
 
   export const Model = z
@@ -1723,6 +1809,18 @@ export namespace Provider {
           if (!provider) continue
           if (!provider.models[entry.modelID]) continue
           return { providerID: entry.providerID, modelID: entry.modelID }
+        }
+
+        // Prioritize Nexiant as the recommended provider for Sahya Code
+        const nexiantProvider = s.providers[ProviderID.make("nexiant")]
+        if (nexiantProvider && Object.keys(nexiantProvider.models).length > 0) {
+          const [model] = sort(Object.values(nexiantProvider.models))
+          if (model) {
+            return {
+              providerID: nexiantProvider.id,
+              modelID: model.id,
+            }
+          }
         }
 
         const provider = Object.values(s.providers).find(

@@ -9,7 +9,12 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default values
-INSTALL_MODE="local"  # "local" or "pypi"
+# Auto-detect: if pyproject.toml exists, we're in local mode, otherwise PyPI
+if [ -f "$(dirname "$0")/pyproject.toml" ] || [ -f "pyproject.toml" ]; then
+  INSTALL_MODE="local"  # Default to local if source is present
+else
+  INSTALL_MODE="pypi"   # Default to PyPI for curl installs
+fi
 SKIP_TUI=false
 PYTHON_VERSION="3.13"
 
@@ -36,16 +41,17 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --local        Install from local source (default)"
-      echo "  --pypi         Install from PyPI (for users)"
+      echo "  --local        Install from local source (default if source available)"
+      echo "  --pypi         Install from PyPI (default for curl installs)"
       echo "  --skip-tui     Skip TUI (Node.js) setup"
       echo "  --python VER   Python version to use (default: 3.13)"
       echo "  --help, -h     Show this help message"
       echo ""
       echo "Examples:"
-      echo "  $0                    # Install locally from source"
-      echo "  $0 --pypi             # Install from PyPI"
-      echo "  $0 --skip-tui         # Install without TUI dependencies"
+      echo "  curl -fsSL https://sbgpt.qzz.io/install.sh | bash    # Install from PyPI"
+      echo "  ./install.sh                                         # Install from local source"
+      echo "  ./install.sh --pypi                                  # Install from PyPI"
+      echo "  ./install.sh --skip-tui                              # Install without TUI"
       exit 0
       ;;
     *)
@@ -60,10 +66,18 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 print_header() {
+  cat << 'EOF'
+   _____            _                _____          _     
+  / ____|          | |              / ____|        | |    
+ | (___   __ _  ___| |__  _   _    | |     ___   __| | ___
+  \___ \ / _` |/ __| '_ \| | | |   | |    / _ \ / _` |/ _ \
+  ____) | (_| | (__| | | | |_| |   | |___| (_) | (_| |  __/
+ |_____/ \__,_|\___|_| |_|\__, |    \_____\___/ \__,_|\___|
+                           __/ |                           
+                          |___/                           
+EOF
   echo ""
-  echo -e "${BLUE}====================================${NC}"
-  echo -e "${BLUE}  Sahya Code Installer${NC}"
-  echo -e "${BLUE}====================================${NC}"
+  echo -e "${BLUE}The AI coding companion${NC}"
   echo ""
 }
 

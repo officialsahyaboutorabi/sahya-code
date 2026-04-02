@@ -1,60 +1,65 @@
 import { useSync } from "@tui/context/sync"
-import { createMemo, createSignal, onCleanup, Show } from "solid-js"
+import { createMemo, createSignal, Index, onCleanup, onMount, Show } from "solid-js"
 import { useTheme } from "../../context/theme"
 import { useTuiConfig } from "../../context/tui-config"
 import { Installation } from "@/installation"
 import { TuiPluginRuntime } from "../../plugin"
-
 import { getScrollAcceleration } from "../../util/scroll"
+import { GHOST_FRAME_MS, GHOST_FRAMES } from "./ghost-frames"
 
-// Tiny Ghost ASCII art frames for sidebar (fits in 38 char width)
-const ghostFrames = [
-  [
-    "   +==*%%*==+   ",
-    "  +*++    ++*+  ",
-    "  *+=  ** =+*   ",
-    "  *oo $@@$ oo*  ",
-    "  x** $$$$ **x  ",
-    "  =+~ @@@@ ~+=  ",
-    "  +++ $$$$ +++  ",
-    "  =   @@@@   =  ",
-  ],
-  [
-    "   +==*%%*==+   ",
-    "  +*++    ++*+  ",
-    "  *+=  ** =+*   ",
-    "  *oo $@@$ oo*  ",
-    "  x** @@@@ **x  ",
-    "  =+~ $$$$ ~+=  ",
-    "  +++ @@@@ +++  ",
-    "  =   $$$$   =  ",
-  ],
-  [
-    "   +==*%%*==+   ",
-    "  +*++    ++*+  ",
-    "  *+=  ** =+*   ",
-    "  *oo $@@$ oo*  ",
-    "  x** $$$$ **x  ",
-    "  =+~ @@@@ ~+=  ",
-    "  +++ $$$$ +++  ",
-    "  =   @@@@   =  ",
-  ],
-]
+// \x01 starts a purple segment, \x02 ends it
+type Seg = { text: string; colored: boolean }
 
-function GhostSidebar(props: { primary: string }) {
-  const [frameIndex, setFrameIndex] = createSignal(0)
-  
-  const interval = setInterval(() => {
-    setFrameIndex((i) => (i + 1) % ghostFrames.length)
-  }, 400)
-  
-  onCleanup(() => clearInterval(interval))
+function parseLine(raw: string): Seg[] {
+  const segs: Seg[] = []
+  let cur = ""
+  let colored = false
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i]
+    if (ch === "\x01") {
+      if (cur) segs.push({ text: cur, colored })
+      cur = ""
+      colored = true
+    } else if (ch === "\x02") {
+      if (cur) segs.push({ text: cur, colored })
+      cur = ""
+      colored = false
+    } else {
+      cur += ch
+    }
+  }
+  if (cur) segs.push({ text: cur, colored })
+  return segs
+}
+
+// Pre-parse all frames once at module load — never during render
+const PARSED_FRAMES: Seg[][][] = GHOST_FRAMES.map((frame) => frame.map(parseLine))
+
+const GHOST_PURPLE = "#8b5cf6"
+
+function GhostSidebar() {
+  const [idx, setIdx] = createSignal(0)
+
+  onMount(() => {
+    const timer = setInterval(() => {
+      setIdx((i) => (i + 1) % PARSED_FRAMES.length)
+    }, GHOST_FRAME_MS)
+    onCleanup(() => clearInterval(timer))
+  })
+
+  const frame = createMemo(() => PARSED_FRAMES[idx()])
 
   return (
-    <box flexDirection="column" alignItems="center" paddingY={1} opacity={0.25}>
-      {ghostFrames[frameIndex()].map((line) => (
-        <text fg={props.primary}>{line}</text>
-      ))}
+    <box paddingBottom={1}>
+      <Index each={frame()}>
+        {(line) => (
+          <text>
+            {line().map((seg) =>
+              seg.colored ? <span style={{ fg: GHOST_PURPLE }}>{seg.text}</span> : seg.text,
+            )}
+          </text>
+        )}
+      </Index>
     </box>
   )
 }
@@ -89,6 +94,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
           }}
         >
           <box flexShrink={0} gap={1} paddingRight={1}>
+            <GhostSidebar />
             <TuiPluginRuntime.Slot
               name="sidebar_title"
               mode="single_winner"
@@ -110,7 +116,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
         </scrollbox>
 
         <box flexShrink={0} gap={1} paddingTop={1}>
-          <GhostSidebar primary={theme.primary} />
           <TuiPluginRuntime.Slot name="sidebar_footer" mode="single_winner" session_id={props.sessionID}>
             <text fg={theme.textMuted}>
               <span style={{ fg: theme.success }}>•</span> <b>Sahya</b>

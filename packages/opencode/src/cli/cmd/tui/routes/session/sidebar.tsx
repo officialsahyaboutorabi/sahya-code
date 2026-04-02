@@ -5,7 +5,7 @@ import { useTuiConfig } from "../../context/tui-config"
 import { Installation } from "@/installation"
 import { TuiPluginRuntime } from "../../plugin"
 import { getScrollAcceleration } from "../../util/scroll"
-import { GHOST_FRAME_MS, GHOST_FRAMES } from "./ghost-frames"
+import { GHOST_FRAME_INTERVAL_MS, GHOST_FRAMES } from "./ghost-frames"
 
 // \x01 starts a purple segment, \x02 ends it
 type Seg = { text: string; colored: boolean }
@@ -43,7 +43,7 @@ function GhostSidebar() {
   onMount(() => {
     const timer = setInterval(() => {
       setIdx((i) => (i + 1) % PARSED_FRAMES.length)
-    }, GHOST_FRAME_MS)
+    }, GHOST_FRAME_INTERVAL_MS)
     onCleanup(() => clearInterval(timer))
   })
 

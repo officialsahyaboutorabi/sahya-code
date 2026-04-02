@@ -2,6 +2,11 @@
 
 This document summarizes all changes made to rebrand opencode to Sahya Code with Ollama and LiteLLM provider support.
 
+**Current Version:** v2.13.4  
+**Last Updated:** 2026-04-02
+
+---
+
 ## Summary of Changes
 
 ### 1. Package Rebranding
@@ -92,6 +97,12 @@ Added two new providers:
 
 #### packages/opencode/src/installation/index.ts
 - Updated USER_AGENT from `opencode/` to `sahyacode/`
+- Updated latest version detection to read from `version.txt` on GitHub
+- Version string includes 'v' prefix for consistency
+
+#### packages/opencode/src/installation/meta.ts
+- Version comes from `OPENCODE_VERSION` compile-time define
+- Falls back to "local" if not defined
 
 ### 8. Install Script
 
@@ -101,6 +112,62 @@ Added two new providers:
 - Detects platform/architecture
 - Downloads appropriate binary from GitHub releases
 - Creates both `sahyacode` and `opencode` symlinks
+- **v2.13.4+**: Now handles tar.gz archives correctly
+- **v2.13.4+**: Looks for `opencode` binary inside `sahyacode-*/bin/` directory
+
+### 9. Version Management
+
+#### version.txt
+- New file at repo root tracking current version
+- Format: `v2.13.4`
+- Used by installation system to check for updates
+
+#### Build Process (packages/opencode/script/build.ts)
+- **IMPORTANT**: Must set `OPENCODE_VERSION` environment variable
+- Without this, binary reports `0.0.0-main-*` instead of actual version
+- Version is baked into binary via `define` option
+
+### 10. Bug Fixes (v2.13.4)
+
+#### Double 'v' in Update Messages
+**File:** `packages/opencode/src/cli/cmd/tui/app.tsx`
+**Problem:** Messages showed `vv2.13.3` instead of `v2.13.3`
+**Fix:** Removed hardcoded 'v' prefix since version already includes it
+
+```typescript
+// Before:
+message: `SahyaCode v${version} is available...`
+
+// After:
+message: `SahyaCode ${version} is available...`
+```
+
+#### Binary Version Reporting
+**File:** `packages/script/src/index.ts`
+**Problem:** Binary showed `0.0.0-main-TIMESTAMP` instead of version
+**Cause:** `Script.version` defaults to preview version when `OPENCODE_VERSION` not set
+**Fix:** Set `OPENCODE_VERSION` env var before building
+
+```bash
+export OPENCODE_VERSION="2.13.4"
+bun run script/build.ts --single
+```
+
+#### Install Script Archive Handling
+**File:** `sahyagpt/install.sh` (deployed to sbgpt.qzz.io)
+**Problem:** Expected raw binary, but GitHub releases use tar.gz
+**Fix:** Added tar extraction logic and proper binary path detection
+
+```bash
+# Extract archive
+tar -xzf "$archive_path" -C "$TEMP_DIR"
+
+# Find binary in extracted directory
+EXTRACTED_DIR=$(find "$TEMP_DIR" -maxdepth 1 -type d -name "sahyacode-*" | head -1)
+mv "$EXTRACTED_DIR/bin/opencode" "$INSTALL_DIR/sahyacode"
+```
+
+---
 
 ## Environment Variables
 
@@ -125,6 +192,13 @@ Added two new providers:
 - `LITELLM_BASE_URL` - LiteLLM API URL (default: https://llm.nexiant.ai)
 - `LITELLM_API_KEY` - LiteLLM API key
 
+### Build Variables
+- `OPENCODE_VERSION` - **REQUIRED** for proper version embedding (e.g., "2.13.4")
+- `OPENCODE_CHANNEL` - Release channel (default: "latest")
+- `OPENCODE_RELEASE` - Set to "1" for release builds
+
+---
+
 ## Config Files
 
 ### Search Order (new to old)
@@ -137,6 +211,8 @@ Added two new providers:
 ### Directories
 - Global config: `~/.config/sahyacode/`
 - Project config: `.sahyacode/` (preferred) or `.opencode/` (legacy)
+
+---
 
 ## Usage
 
@@ -152,6 +228,11 @@ opencode
 ### Install via curl
 ```bash
 curl -fsSL https://sbgpt.qzz.io/install.sh | bash
+```
+
+### Upgrade
+```bash
+sahyacode upgrade
 ```
 
 ### Configure Providers
@@ -183,3 +264,69 @@ curl -fsSL https://sbgpt.qzz.io/install.sh | bash
   "model": "litellm/gpt-4"
 }
 ```
+
+---
+
+## Build Instructions
+
+### Prerequisites
+- Bun 1.3.11+
+- Node.js 22+
+
+### Build Binary (macOS ARM64)
+```bash
+cd packages/opencode
+
+# IMPORTANT: Set version env var
+export OPENCODE_VERSION="2.13.4"
+
+# Build
+bun run script/build.ts --single
+
+# Package
+cd dist/sahyacode-darwin-arm64
+tar -czf ../../../sahyacode-darwin-arm64.tar.gz .
+```
+
+### Release
+```bash
+# Tag and push
+git tag v2.13.4
+git push origin v2.13.4
+
+# Create release with binary
+gh release create v2.13.4 \
+  --title "v2.13.4" \
+  --notes "Release notes..." \
+  sahyacode-darwin-arm64.tar.gz
+```
+
+---
+
+## Repository Structure
+
+```
+sahya-code/
+├── packages/
+│   ├── opencode/          # Main CLI application
+│   │   ├── src/
+│   │   │   ├── cli/       # CLI commands and TUI
+│   │   │   ├── installation/  # Version checking and upgrades
+│   │   │   ├── provider/  # AI provider implementations
+│   │   │   └── ...
+│   │   └── script/
+│   │       └── build.ts   # Build script
+│   └── script/            # Shared build utilities
+├── sahyagpt/              # Public website (sbgpt.qzz.io)
+│   └── install.sh         # Public install script
+├── version.txt            # Current version
+└── install.sh             # Local install script
+```
+
+---
+
+## Related Files
+
+- [CHANGELOG.md](./CHANGELOG.md) - Detailed version history
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture (if exists)
+- [README.md](./README.md) - Main documentation

@@ -642,6 +642,31 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       category: "System",
     },
     {
+      title: "Check for updates",
+      value: "app.upgrade",
+      slash: {
+        name: "upgrade",
+      },
+      onSelect: async () => {
+        toast.show({
+          variant: "info",
+          message: "Checking for updates...",
+          duration: 3000,
+        })
+        const result = await sdk.client.global.upgrade({})
+        if (result.error) {
+          toast.show({
+            variant: "error",
+            title: "Update Check Failed",
+            message: "Failed to check for updates",
+            duration: 5000,
+          })
+        }
+        dialog.clear()
+      },
+      category: "System",
+    },
+    {
       title: "Switch theme",
       value: "theme.switch",
       keybind: "theme_list",
@@ -833,6 +858,14 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
     const skipped = kv.get("skipped_version")
     if (skipped && !semver.gt(version, skipped)) return
+
+    // Show toast notification first to make it visible
+    toast.show({
+      variant: "info",
+      title: "Update Available",
+      message: `SahyaCode v${version} is available. Press Ctrl+P and type /upgrade to update.`,
+      duration: 10000,
+    })
 
     const choice = await DialogConfirm.show(
       dialog,

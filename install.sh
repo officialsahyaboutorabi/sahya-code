@@ -101,8 +101,8 @@ get_download_url() {
         fi
     fi
     
-    # Binary names use 'opencode' prefix in the source repo
-    local binary_name="opencode-${platform}-${arch}${suffix}"
+    # Binary names use 'sahyacode' prefix
+    local binary_name="sahyacode-${platform}-${arch}${suffix}"
     
     if [ "$VERSION" = "latest" ]; then
         echo "https://github.com/${SOURCE_REPO}/releases/latest/download/${binary_name}.tar.gz"
@@ -143,15 +143,15 @@ main() {
     echo "Extracting..."
     tar -xzf "$TEMP_DIR/${INSTALL_NAME}.tar.gz" -C "$TEMP_DIR"
     
-    # Install binary (source is 'opencode', install as 'sahyacode')
-    if [ -f "$TEMP_DIR/opencode" ]; then
-        mv "$TEMP_DIR/opencode" "$INSTALL_DIR/${INSTALL_NAME}"
+    # Install binary
+    if [ -f "$TEMP_DIR/sahyacode" ]; then
+        mv "$TEMP_DIR/sahyacode" "$INSTALL_DIR/${INSTALL_NAME}"
         chmod +x "$INSTALL_DIR/${INSTALL_NAME}"
-    elif [ -f "$TEMP_DIR/bin/opencode" ]; then
-        mv "$TEMP_DIR/bin/opencode" "$INSTALL_DIR/${INSTALL_NAME}"
+    elif [ -f "$TEMP_DIR/bin/sahyacode" ]; then
+        mv "$TEMP_DIR/bin/sahyacode" "$INSTALL_DIR/${INSTALL_NAME}"
         chmod +x "$INSTALL_DIR/${INSTALL_NAME}"
     else
-        echo "Error: Could not find opencode binary in archive"
+        echo "Error: Could not find sahyacode binary in archive"
         exit 1
     fi
     

@@ -4,8 +4,7 @@ set -e
 # Sahya Code Installation Script
 # Install with: curl -fsSL https://sbgpt.qzz.io/install.sh | bash
 
-# Download binaries from original opencode repository (anomalyco/opencode)
-# But install locally as sahyacode
+# Download binaries from sahyacode repository
 SOURCE_REPO="officialsahyaboutorabi/sahya-code"
 INSTALL_NAME="sahyacode"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
@@ -82,6 +81,20 @@ check_musl() {
     echo ""
 }
 
+# Get the latest version from GitHub API
+get_latest_version() {
+    local api_url="https://api.github.com/repos/${SOURCE_REPO}/releases/latest"
+    local version
+    
+    if command -v curl >/dev/null 2>&1; then
+        version=$(curl -fsSL "$api_url" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4)
+    elif command -v wget >/dev/null 2>&1; then
+        version=$(wget -qO- "$api_url" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4)
+    fi
+    
+    echo "$version"
+}
+
 # Get the download URL
 get_download_url() {
     local platform_arch=$1
@@ -101,13 +114,25 @@ get_download_url() {
         fi
     fi
     
-    # Binary names use 'sahyacode' prefix
+    # Binary names use 'sahyacode' prefix in the source repo
     local binary_name="sahyacode-${platform}-${arch}${suffix}"
     
+    # GitHub releases use tar.gz format
     if [ "$VERSION" = "latest" ]; then
-        echo "https://github.com/${SOURCE_REPO}/releases/latest/download/${binary_name}.tar.gz"
+        local latest_version
+        latest_version=$(get_latest_version)
+        if [ -z "$latest_version" ]; then
+            echo "Error: Could not determine latest version" >&2
+            exit 1
+        fi
+        echo "https://github.com/${SOURCE_REPO}/releases/download/${latest_version}/${binary_name}.tar.gz"
     else
-        echo "https://github.com/${SOURCE_REPO}/releases/download/${VERSION}/${binary_name}.tar.gz"
+        # Ensure VERSION has 'v' prefix for GitHub releases
+        local version_tag="$VERSION"
+        if [[ ! "$version_tag" =~ ^v ]]; then
+            version_tag="v${version_tag}"
+        fi
+        echo "https://github.com/${SOURCE_REPO}/releases/download/${version_tag}/${binary_name}.tar.gz"
     fi
 }
 
@@ -130,28 +155,38 @@ main() {
     TEMP_DIR=$(mktemp -d)
     trap "rm -rf $TEMP_DIR" EXIT
     
-    # Download and extract
+    # Download archive
+    local archive_path="$TEMP_DIR/${INSTALL_NAME}.tar.gz"
     if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_DIR/${INSTALL_NAME}.tar.gz"
+        curl -fsSL "$DOWNLOAD_URL" -o "$archive_path"
     elif command -v wget >/dev/null 2>&1; then
-        wget -q "$DOWNLOAD_URL" -O "$TEMP_DIR/${INSTALL_NAME}.tar.gz"
+        wget -q "$DOWNLOAD_URL" -O "$archive_path"
     else
         echo "Error: curl or wget is required"
         exit 1
     fi
     
+    # Extract archive
     echo "Extracting..."
-    tar -xzf "$TEMP_DIR/${INSTALL_NAME}.tar.gz" -C "$TEMP_DIR"
+    tar -xzf "$archive_path" -C "$TEMP_DIR"
     
-    # Install binary
-    if [ -f "$TEMP_DIR/sahyacode" ]; then
+    # Find the extracted directory (sahyacode-*)
+    EXTRACTED_DIR=$(find "$TEMP_DIR" -maxdepth 1 -type d -name "sahyacode-*" | head -1)
+    
+    # Install binary - look for 'opencode' binary in the archive
+    if [ -f "$EXTRACTED_DIR/bin/opencode" ]; then
+        chmod +x "$EXTRACTED_DIR/bin/opencode"
+        mv "$EXTRACTED_DIR/bin/opencode" "$INSTALL_DIR/${INSTALL_NAME}"
+    elif [ -f "$TEMP_DIR/sahyacode" ]; then
+        chmod +x "$TEMP_DIR/sahyacode"
         mv "$TEMP_DIR/sahyacode" "$INSTALL_DIR/${INSTALL_NAME}"
-        chmod +x "$INSTALL_DIR/${INSTALL_NAME}"
     elif [ -f "$TEMP_DIR/bin/sahyacode" ]; then
+        chmod +x "$TEMP_DIR/bin/sahyacode"
         mv "$TEMP_DIR/bin/sahyacode" "$INSTALL_DIR/${INSTALL_NAME}"
-        chmod +x "$INSTALL_DIR/${INSTALL_NAME}"
     else
         echo "Error: Could not find sahyacode binary in archive"
+        echo "Contents of temp directory:"
+        find "$TEMP_DIR" -type f 2>/dev/null || true
         exit 1
     fi
     

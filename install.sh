@@ -4,7 +4,7 @@ set -e
 # Sahya Code Installation Script
 # Install with: curl -fsSL https://sbgpt.qzz.io/install.sh | bash
 
-REPO="anomalyco/sahyacode"
+REPO="officialsahyaboutorabi/sahya-code"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-latest}"
 

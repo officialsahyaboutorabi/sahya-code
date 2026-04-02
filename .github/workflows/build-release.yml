@@ -1,0 +1,135 @@
+name: Build and Release SahyaCode
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: |
+          cd packages/opencode
+          bun install
+      
+      - name: Build for macOS ARM64
+        run: |
+          cd packages/opencode
+          bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ./bin/sahyacode-darwin-arm64
+      
+      - name: Build for macOS x64
+        run: |
+          cd packages/opencode
+          bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile ./bin/sahyacode-darwin-x64
+      
+      - name: Upload macOS binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-macos
+          path: |
+            packages/opencode/bin/sahyacode-darwin-arm64
+            packages/opencode/bin/sahyacode-darwin-x64
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: |
+          cd packages/opencode
+          bun install
+      
+      - name: Build for Linux ARM64
+        run: |
+          cd packages/opencode
+          bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile ./bin/sahyacode-linux-arm64
+      
+      - name: Build for Linux x64
+        run: |
+          cd packages/opencode
+          bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile ./bin/sahyacode-linux-x64
+      
+      - name: Upload Linux binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-linux
+          path: |
+            packages/opencode/bin/sahyacode-linux-arm64
+            packages/opencode/bin/sahyacode-linux-x64
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: |
+          cd packages/opencode
+          bun install
+      
+      - name: Build for Windows x64
+        run: |
+          cd packages/opencode
+          bun build --compile --target=bun-windows-x64 ./src/index.ts --outfile ./bin/sahyacode-windows-x64.exe
+      
+      - name: Upload Windows binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-windows
+          path: |
+            packages/opencode/bin/sahyacode-windows-x64.exe
+
+  release:
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./binaries
+          pattern: sahyacode-*
+          merge-multiple: true
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: ./binaries/**
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          name: SahyaCode ${{ github.event.inputs.version || github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

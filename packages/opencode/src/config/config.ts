@@ -61,16 +61,16 @@ export namespace Config {
   function systemManagedConfigDir(): string {
     switch (process.platform) {
       case "darwin":
-        return "/Library/Application Support/opencode"
+        return "/Library/Application Support/sahyacode"
       case "win32":
-        return path.join(process.env.ProgramData || "C:\\ProgramData", "opencode")
+        return path.join(process.env.ProgramData || "C:\\ProgramData", "sahyacode")
       default:
-        return "/etc/opencode"
+        return "/etc/sahyacode"
     }
   }
 
   export function managedConfigDir() {
-    return process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
+    return process.env.SAHYACODE_TEST_MANAGED_CONFIG_DIR || process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
   }
 
   const managedDir = managedConfigDir()
@@ -799,7 +799,7 @@ export namespace Config {
       command: z
         .record(z.string(), Command)
         .optional()
-        .describe("Command configuration, see https://opencode.ai/docs/commands"),
+        .describe("Command configuration, see https://sahya.ai/docs/commands"),
       skills: Skills.optional().describe("Additional skill folder paths"),
       watcher: z
         .object({
@@ -871,7 +871,7 @@ export namespace Config {
         })
         .catchall(Agent)
         .optional()
-        .describe("Agent configuration, see https://opencode.ai/docs/agents"),
+        .describe("Agent configuration, see https://sahya.ai/docs/agents"),
       provider: z
         .record(z.string(), Provider)
         .optional()
@@ -1011,7 +1011,7 @@ export namespace Config {
   export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/Config") {}
 
   function globalConfigFile() {
-    const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+    const candidates = ["sahyacode.jsonc", "sahyacode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
       path.join(Global.Path.config, file),
     )
     for (const file of candidates) {
@@ -1134,8 +1134,8 @@ export namespace Config {
           const parsed = Info.safeParse(normalized)
           if (parsed.success) {
             if (!parsed.data.$schema && isFile) {
-              parsed.data.$schema = "https://opencode.ai/config.json"
-              const updated = original.replace(/^\s*\{/, '{\n  "$schema": "https://opencode.ai/config.json",')
+              parsed.data.$schema = "https://sahya.ai/config.json"
+              const updated = original.replace(/^\s*\{/, '{\n  "$schema": "https://sahya.ai/config.json",')
               yield* fs.writeFileString(options.path, updated).pipe(Effect.catch(() => Effect.void))
             }
             const data = parsed.data
@@ -1167,6 +1167,8 @@ export namespace Config {
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "config.json"))),
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.json"))),
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"))),
+            mergeDeep(yield* loadFile(path.join(Global.Path.config, "sahyacode.json"))),
+            mergeDeep(yield* loadFile(path.join(Global.Path.config, "sahyacode.jsonc"))),
           )
 
           const legacy = path.join(Global.Path.config, "config")
@@ -1176,9 +1178,9 @@ export namespace Config {
                 .then(async (mod) => {
                   const { provider, model, ...rest } = mod.default
                   if (provider && model) result.model = `${provider}/${model}`
-                  result["$schema"] = "https://opencode.ai/config.json"
+                  result["$schema"] = "https://sahya.ai/config.json"
                   result = mergeDeep(result, rest)
-                  await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
+                  await fsNode.writeFile(path.join(Global.Path.config, "sahyacode.json"), JSON.stringify(result, null, 2))
                   await fsNode.unlink(legacy)
                 })
                 .catch(() => {}),
@@ -1241,7 +1243,7 @@ export namespace Config {
               }
               const wellknown = (yield* Effect.promise(() => response.json())) as any
               const remoteConfig = wellknown.config ?? {}
-              if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
+              if (!remoteConfig.$schema) remoteConfig.$schema = "https://sahya.ai/config.json"
               const source = `${url}/.well-known/opencode`
               const next = yield* loadConfig(JSON.stringify(remoteConfig), {
                 dir: path.dirname(source),

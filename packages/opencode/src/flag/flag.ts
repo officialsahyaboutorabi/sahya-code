@@ -152,3 +152,20 @@ Object.defineProperty(Flag, "OPENCODE_CLIENT", {
   enumerable: true,
   configurable: false,
 })
+
+// SahyaCode flags (aliases for OPENCODE flags with legacy support)
+Object.defineProperty(Flag, "SAHYACODE_DISABLE_PROJECT_CONFIG", {
+  get() {
+    return truthy("SAHYACODE_DISABLE_PROJECT_CONFIG") || truthy("OPENCODE_DISABLE_PROJECT_CONFIG")
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "SAHYACODE_CONFIG_DIR", {
+  get() {
+    return process.env["SAHYACODE_CONFIG_DIR"] || process.env["OPENCODE_CONFIG_DIR"]
+  },
+  enumerable: true,
+  configurable: false,
+})

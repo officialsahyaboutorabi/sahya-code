@@ -772,6 +772,176 @@ export namespace Provider {
         },
       }
     },
+    ollama: async (input) => {
+      // Ollama runs locally - check if we can connect
+      const config = await Config.get()
+      const baseURL = config.provider?.["ollama"]?.options?.baseURL 
+        || Env.get("OLLAMA_BASE_URL") 
+        || "http://localhost:11434"
+      
+      // Try to fetch available models from Ollama
+      let models: Record<string, Model> = {}
+      try {
+        const response = await fetch(`${baseURL}/api/tags`, { 
+          signal: AbortSignal.timeout(5000) 
+        })
+        if (response.ok) {
+          const data = await response.json() as { models?: Array<{ name: string; model?: string }> }
+          if (data.models) {
+            for (const m of data.models) {
+              const modelId = m.name || m.model || "unknown"
+              models[modelId] = {
+                id: ModelID.make(modelId),
+                providerID: ProviderID.make("ollama"),
+                name: modelId,
+                family: "local",
+                api: {
+                  id: modelId,
+                  url: baseURL,
+                  npm: "@ai-sdk/openai-compatible",
+                },
+                status: "active",
+                headers: {},
+                options: {},
+                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+                limit: { context: 128000, output: 4096 },
+                capabilities: {
+                  temperature: true,
+                  reasoning: false,
+                  attachment: false,
+                  toolcall: true,
+                  input: {
+                    text: true,
+                    audio: false,
+                    image: false,
+                    video: false,
+                    pdf: false,
+                  },
+                  output: {
+                    text: true,
+                    audio: false,
+                    image: false,
+                    video: false,
+                    pdf: false,
+                  },
+                  interleaved: false,
+                },
+                release_date: "",
+                variants: {},
+              }
+            }
+          }
+        }
+      } catch (e) {
+        log.warn("Failed to connect to Ollama", { baseURL, error: e })
+      }
+
+      return {
+        autoload: Object.keys(models).length > 0,
+        options: {
+          baseURL: `${baseURL}/v1`,
+          apiKey: "ollama", // Ollama doesn't require an API key but the SDK expects one
+        },
+        async getModel(sdk: any, modelID: string) {
+          return sdk.languageModel(modelID)
+        },
+        async discoverModels(): Promise<Record<string, Model>> {
+          return models
+        },
+      }
+    },
+    litellm: async (input) => {
+      // LiteLLM provider - default to nexiant endpoint
+      const config = await Config.get()
+      const baseURL = config.provider?.["litellm"]?.options?.baseURL 
+        || Env.get("LITELLM_BASE_URL") 
+        || "https://llm.nexiant.ai"
+      
+      const apiKey = await (async () => {
+        const envKey = Env.get("LITELLM_API_KEY")
+        if (envKey) return envKey
+        const auth = await Auth.get("litellm")
+        if (auth?.type === "api") return auth.key
+        return config.provider?.["litellm"]?.options?.apiKey
+      })()
+
+      // If no API key, don't autoload
+      if (!apiKey) {
+        return { autoload: false }
+      }
+
+      // Try to fetch available models from LiteLLM
+      let models: Record<string, Model> = {}
+      try {
+        const response = await fetch(`${baseURL}/models`, {
+          headers: apiKey ? { "Authorization": `Bearer ${apiKey}` } : {},
+          signal: AbortSignal.timeout(10000)
+        })
+        if (response.ok) {
+          const data = await response.json() as { data?: Array<{ id: string; context_window?: number }> }
+          if (data.data) {
+            for (const m of data.data) {
+              const modelId = m.id
+              models[modelId] = {
+                id: ModelID.make(modelId),
+                providerID: ProviderID.make("litellm"),
+                name: modelId,
+                family: "litellm",
+                api: {
+                  id: modelId,
+                  url: baseURL,
+                  npm: "@ai-sdk/openai-compatible",
+                },
+                status: "active",
+                headers: {},
+                options: {},
+                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+                limit: { context: m.context_window || 128000, output: 4096 },
+                capabilities: {
+                  temperature: true,
+                  reasoning: true,
+                  attachment: true,
+                  toolcall: true,
+                  input: {
+                    text: true,
+                    audio: false,
+                    image: true,
+                    video: false,
+                    pdf: true,
+                  },
+                  output: {
+                    text: true,
+                    audio: false,
+                    image: false,
+                    video: false,
+                    pdf: false,
+                  },
+                  interleaved: false,
+                },
+                release_date: "",
+                variants: {},
+              }
+            }
+          }
+        }
+      } catch (e) {
+        log.warn("Failed to fetch models from LiteLLM", { baseURL, error: e })
+      }
+
+      return {
+        autoload: true,
+        options: {
+          baseURL: `${baseURL}/v1`,
+          apiKey,
+        },
+        async getModel(sdk: any, modelID: string) {
+          return sdk.languageModel(modelID)
+        },
+        async discoverModels(): Promise<Record<string, Model>> {
+          return models
+        },
+      }
+    },
   }
 
   export const Model = z

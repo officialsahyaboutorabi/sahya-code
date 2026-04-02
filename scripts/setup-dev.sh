@@ -124,9 +124,9 @@ setup_tui() {
   fi
   
   print_info "Setting up TUI..."
-  cd src/sahya_code/tui
+  cd src/sahya_code/tui || { print_error "TUI directory not found"; return 1; }
   npm install
-  cd ../../..
+  cd ../../.. || return 1
   
   print_success "TUI dependencies installed"
 }
@@ -149,7 +149,7 @@ create_config() {
   
   if [ ! -f "$config_dir/config.toml" ]; then
     print_info "Creating default configuration..."
-    mkdir -p "$config_dir"
+    mkdir -p "$config_dir" || { print_error "Cannot create config directory: $config_dir"; return 1; }
     
     cat > "$config_dir/config.toml" << 'EOF'
 # Sahya Code Development Configuration

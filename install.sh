@@ -222,6 +222,7 @@ setup_tui() {
       else
         print_error "Failed to install TUI dependencies"
         print_info "You can try manually: cd ${TUI_DIR} && npm install"
+        exit 1
       fi
     else
       print_warning "TUI package.json not found at ${TUI_DIR}"
@@ -269,6 +270,14 @@ EOF
 # Main installation
 main() {
   print_header
+  
+  # Check if installation directory is writable
+  INSTALL_DIR="${HOME}/.local/bin"
+  if [ -d "$INSTALL_DIR" ] && [ ! -w "$INSTALL_DIR" ]; then
+    print_error "Installation directory $INSTALL_DIR is not writable"
+    print_info "Please check permissions or choose a different installation method"
+    exit 1
+  fi
   
   # Install uv
   install_uv

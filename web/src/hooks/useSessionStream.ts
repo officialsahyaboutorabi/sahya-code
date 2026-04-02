@@ -2414,6 +2414,9 @@ export function useSessionStream(
 
       ws.onopen = () => {
         if (wsRef.current !== ws) {
+          ws.onclose = null;
+          ws.onerror = null;
+          ws.onmessage = null;
           ws.close();
           return;
         }
@@ -2506,6 +2509,10 @@ export function useSessionStream(
           onError?.(err);
         } else if (event.code === 4029) {
           const err = new Error("Too many concurrent sessions");
+          setError(err);
+          onError?.(err);
+        } else if (event.code !== 1000 && event.code !== 1001) {
+          const err = new Error(`Connection lost (code: ${event.code})`);
           setError(err);
           onError?.(err);
         }

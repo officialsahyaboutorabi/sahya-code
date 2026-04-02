@@ -866,7 +866,8 @@ export const PromptInput = ({
                   controller.textInput.clear();
                 }
               })
-              .catch(() => {
+              .catch((error) => {
+                console.error("[PromptInput] Failed to submit:", error);
                 // Don't clear on error - user may want to retry
               });
           } else {
@@ -876,7 +877,8 @@ export const PromptInput = ({
               controller.textInput.clear();
             }
           }
-        } catch {
+        } catch (error) {
+          console.error("[PromptInput] Failed to process:", error);
           // Don't clear on error - user may want to retry
         }
       })

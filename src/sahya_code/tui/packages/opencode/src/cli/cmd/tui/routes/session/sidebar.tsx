@@ -3,6 +3,7 @@ import { createMemo, Show } from "solid-js"
 import { useTheme } from "../../context/theme"
 import { Installation } from "@/installation"
 import { TuiPluginRuntime } from "../../plugin"
+import { GhostAnimation } from "./ghost-animation"
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const sync = useSync()
@@ -31,6 +32,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
           }}
         >
           <box flexShrink={0} gap={1} paddingRight={1}>
+            <GhostAnimation />
             <TuiPluginRuntime.Slot
               name="sidebar_title"
               mode="single_winner"

@@ -221,7 +221,8 @@ export function ApprovalDialog({
                       : (() => {
                           try {
                             return `${item.type}:${JSON.stringify(item.data)}`;
-                          } catch {
+                          } catch (error) {
+                            console.error("[ApprovalDialog] Failed to serialize item data:", error);
                             return `${item.type}:unserializable`;
                           }
                         })();

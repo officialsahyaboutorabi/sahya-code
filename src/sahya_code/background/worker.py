@@ -73,6 +73,8 @@ async def run_background_task_worker(
     kill_sent_at: float | None = None
     timed_out = False
     timeout_reason: str | None = None
+    returncode: int | None = None
+    last_known_runtime: TaskRuntime | None = None
 
     async def _heartbeat_loop() -> None:
         while not stop_event.is_set():
@@ -184,6 +186,9 @@ async def run_background_task_worker(
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
+
+    if last_known_runtime is None:
+        return
 
     runtime = last_known_runtime.model_copy()
     control = store.read_control(task_id)

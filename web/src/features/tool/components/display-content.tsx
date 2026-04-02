@@ -912,7 +912,8 @@ const TextContent = ({ content }: { content: MCPTextData }) => {
     }
 
     return <JSONContent data={parsed} />;
-  } catch {
+  } catch (error) {
+    console.error("[DisplayContent] Failed to parse content:", error);
     return <PlainTextContent text={content.text} />;
   }
 };

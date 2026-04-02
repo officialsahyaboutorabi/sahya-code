@@ -218,6 +218,7 @@ export function QuestionDialog({
       } else {
         for (let offset = 1; offset <= totalQuestions; offset++) {
           const idx = (currentQuestionIndex + offset) % totalQuestions;
+          if (idx >= questions.length) continue;
           if (!(questions[idx].question in newAnswers)) {
             setCurrentQuestionIndex(idx);
             restoreForQuestion(idx);

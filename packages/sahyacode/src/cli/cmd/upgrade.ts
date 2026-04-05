@@ -53,16 +53,40 @@ export const UpgradeCommand = {
       target = await Installation.latest()
     }
 
-    if (Installation.VERSION === target) {
-      prompts.log.warn(`sahyacode upgrade skipped: ${target} is already installed`)
+    // Normalize versions for comparison (strip 'v' prefix)
+    const currentVersion = Installation.VERSION.replace(/^v/, "")
+    const targetVersion = target.replace(/^v/, "")
+    
+    if (currentVersion === targetVersion) {
+      prompts.log.warn(`sahyacode upgrade skipped: v${targetVersion} is already installed`)
       prompts.outro("Done")
       return
     }
 
-    prompts.log.info(`From ${Installation.VERSION} → ${target}`)
+    // Check if trying to downgrade
+    const compareVersions = (a: string, b: string): number => {
+      const partsA = a.split('.').map(Number)
+      const partsB = b.split('.').map(Number)
+      for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+        const partA = partsA[i] || 0
+        const partB = partsB[i] || 0
+        if (partA > partB) return 1
+        if (partA < partB) return -1
+      }
+      return 0
+    }
+
+    if (compareVersions(targetVersion, currentVersion) < 0) {
+      prompts.log.warn(`sahyacode v${currentVersion} is newer than v${targetVersion}`)
+      prompts.log.info("You're already on a newer version. No upgrade needed.")
+      prompts.outro("Done")
+      return
+    }
+
+    prompts.log.info(`From v${currentVersion} → v${targetVersion}`)
     const spinner = prompts.spinner()
     spinner.start("Upgrading...")
-    const err = await Installation.upgrade(method, target).catch((err) => err)
+    const err = await Installation.upgrade(method, targetVersion).catch((err) => err)
     if (err) {
       spinner.stop("Upgrade failed", 1)
       if (err instanceof Installation.UpgradeFailedError) {

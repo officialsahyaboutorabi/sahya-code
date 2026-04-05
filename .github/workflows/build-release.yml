@@ -15,8 +15,11 @@ permissions:
   contents: write
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
       
@@ -25,91 +28,119 @@ jobs:
         with:
           bun-version: latest
       
-      - name: Install dependencies
+      - name: Determine version
+        id: version
         run: |
-          cd packages/opencode
-          bun install
-      
-      - name: Build for macOS ARM64
-        run: |
-          cd packages/opencode
-          bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ./bin/sahyacode-darwin-arm64
-      
-      - name: Build for macOS x64
-        run: |
-          cd packages/opencode
-          bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile ./bin/sahyacode-darwin-x64
-      
-      - name: Upload macOS binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: sahyacode-macos
-          path: |
-            packages/opencode/bin/sahyacode-darwin-arm64
-            packages/opencode/bin/sahyacode-darwin-x64
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            # Strip 'v' prefix if present for consistency
+            VERSION="${VERSION#v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          else
+            TAG=${GITHUB_REF#refs/tags/}
+            VERSION="${TAG#v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+          echo "Building version: $VERSION"
 
-  build-linux:
+  build-cli:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
       
-      - name: Install dependencies
+      - name: Build all targets
+        id: build
         run: |
           cd packages/opencode
-          bun install
+          bun ./script/build.ts
+        env:
+          SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
+          SAHYACODE_CHANNEL: "release"
       
-      - name: Build for Linux ARM64
-        run: |
-          cd packages/opencode
-          bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile ./bin/sahyacode-linux-arm64
-      
-      - name: Build for Linux x64
-        run: |
-          cd packages/opencode
-          bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile ./bin/sahyacode-linux-x64
-      
-      - name: Upload Linux binaries
+      - name: Upload Linux ARM64 binary
         uses: actions/upload-artifact@v4
         with:
-          name: sahyacode-linux
-          path: |
-            packages/opencode/bin/sahyacode-linux-arm64
-            packages/opencode/bin/sahyacode-linux-x64
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+          name: sahyacode-linux-arm64
+          path: packages/opencode/dist/sahyacode-linux-arm64*
       
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
-        run: |
-          cd packages/opencode
-          bun install
-      
-      - name: Build for Windows x64
-        run: |
-          cd packages/opencode
-          bun build --compile --target=bun-windows-x64 ./src/index.ts --outfile ./bin/sahyacode-windows-x64.exe
-      
-      - name: Upload Windows binaries
+      - name: Upload Linux x64 binary
         uses: actions/upload-artifact@v4
         with:
-          name: sahyacode-windows
-          path: |
-            packages/opencode/bin/sahyacode-windows-x64.exe
+          name: sahyacode-linux-x64
+          path: packages/opencode/dist/sahyacode-linux-x64*
+      
+      - name: Upload Linux ARM64 musl binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-linux-arm64-musl
+          path: packages/opencode/dist/sahyacode-linux-arm64-musl*
+      
+      - name: Upload Linux x64 musl binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-linux-x64-musl
+          path: packages/opencode/dist/sahyacode-linux-x64-musl*
+      
+      - name: Upload Linux x64 baseline binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-linux-x64-baseline
+          path: packages/opencode/dist/sahyacode-linux-x64-baseline*
+      
+      - name: Upload Linux x64 musl baseline binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-linux-x64-musl-baseline
+          path: packages/opencode/dist/sahyacode-linux-x64-musl-baseline*
+      
+      - name: Upload macOS ARM64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-darwin-arm64
+          path: packages/opencode/dist/sahyacode-darwin-arm64*
+      
+      - name: Upload macOS x64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-darwin-x64
+          path: packages/opencode/dist/sahyacode-darwin-x64*
+      
+      - name: Upload macOS x64 baseline binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-darwin-x64-baseline
+          path: packages/opencode/dist/sahyacode-darwin-x64-baseline*
+      
+      - name: Upload Windows x64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-windows-x64
+          path: packages/opencode/dist/sahyacode-windows-x64*
+      
+      - name: Upload Windows ARM64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-windows-arm64
+          path: packages/opencode/dist/sahyacode-windows-arm64*
+      
+      - name: Upload Windows x64 baseline binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sahyacode-windows-x64-baseline
+          path: packages/opencode/dist/sahyacode-windows-x64-baseline*
 
   release:
-    needs: [build-macos, build-linux, build-windows]
+    needs: [version, build-cli]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -121,13 +152,17 @@ jobs:
           pattern: sahyacode-*
           merge-multiple: true
       
+      - name: List downloaded files
+        run: |
+          echo "Downloaded files:"
+          find ./binaries -type f -ls
+      
       - name: Create Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
           files: ./binaries/**
-          tag_name: ${{ github.event.inputs.version || github.ref_name }}
-          name: SahyaCode ${{ github.event.inputs.version || github.ref_name }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: SahyaCode ${{ needs.version.outputs.tag }}
           draft: false
           prerelease: false
           generate_release_notes: true

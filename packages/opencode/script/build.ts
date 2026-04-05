@@ -15,7 +15,7 @@ process.chdir(dir)
 import { Script } from "@opencode-ai/script"
 import pkg from "../package.json"
 
-const modelsUrl = process.env.OPENCODE_MODELS_URL || "https://models.dev"
+const modelsUrl = process.env.SAHYACODE_MODELS_URL || process.env.OPENCODE_MODELS_URL || "https://models.dev"
 // Fetch and generate models.dev snapshot
 const modelsData = process.env.MODELS_DEV_API_JSON
   ? await Bun.file(process.env.MODELS_DEV_API_JSON).text()
@@ -215,8 +215,8 @@ for (const item of targets) {
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/opencode`,
-      execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
+      outfile: `dist/${name}/bin/sahyacode`,
+      execArgv: [`--user-agent=sahyacode/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },
     files: {
@@ -224,9 +224,15 @@ for (const item of targets) {
     },
     entrypoints: ["./src/index.ts", parserWorker, workerPath, ...(embeddedFileMap ? ["opencode-web-ui.gen.ts"] : [])],
     define: {
+      SAHYACODE_VERSION: `'${Script.version}'`,
+      SAHYACODE_MIGRATIONS: JSON.stringify(migrations),
+      OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
+      SAHYACODE_WORKER_PATH: workerPath,
+      SAHYACODE_CHANNEL: `'${Script.channel}'`,
+      SAHYACODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+      // Backward compatibility with OPENCODE_ prefix
       OPENCODE_VERSION: `'${Script.version}'`,
       OPENCODE_MIGRATIONS: JSON.stringify(migrations),
-      OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
       OPENCODE_WORKER_PATH: workerPath,
       OPENCODE_CHANNEL: `'${Script.channel}'`,
       OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
@@ -235,7 +241,7 @@ for (const item of targets) {
 
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
-    const binaryPath = `dist/${name}/bin/opencode`
+    const binaryPath = `dist/${name}/bin/sahyacode`
     console.log(`Running smoke test: ${binaryPath} --version`)
     try {
       const versionOutput = await $`${binaryPath} --version`.text()

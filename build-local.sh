@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Building SahyaCode for local macOS..."
+echo "Building SahyaCode for local platform..."
 
 # Check if bun is installed
 if ! command -v bun &> /dev/null; then
@@ -15,18 +15,55 @@ cd packages/opencode
 echo "Installing dependencies..."
 bun install
 
-echo "Building for macOS ARM64..."
-bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ./bin/sahyacode-darwin-arm64
+# Detect platform and architecture
+PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
 
-echo "Creating sahyacode symlink..."
-ln -sf sahyacode-darwin-arm64 ./bin/sahyacode
+case "$PLATFORM" in
+    linux)
+        PLATFORM="linux"
+        ;;
+    darwin)
+        PLATFORM="darwin"
+        ;;
+    mingw*|msys*|cygwin*)
+        PLATFORM="windows"
+        ;;
+    *)
+        echo "Unsupported platform: $PLATFORM"
+        exit 1
+        ;;
+esac
+
+case "$ARCH" in
+    x86_64|amd64)
+        ARCH="x64"
+        ;;
+    arm64|aarch64)
+        ARCH="arm64"
+        ;;
+    *)
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+        ;;
+esac
+
+TARGET="bun-${PLATFORM}-${ARCH}"
+OUTPUT_NAME="sahyacode-${PLATFORM}-${ARCH}"
+
+echo "Building for ${PLATFORM}-${ARCH}..."
+bun build --compile --target=${TARGET} ./src/index.ts --outfile ./bin/${OUTPUT_NAME}
+
+# Create symlink for convenience
+cd bin
+ln -sf ${OUTPUT_NAME} sahyacode 2>/dev/null || true
 
 echo ""
 echo "Build complete! Binary location:"
-echo "  $(pwd)/bin/sahyacode-darwin-arm64"
+echo "  $(pwd)/${OUTPUT_NAME}"
 echo ""
 echo "To install locally, run:"
-echo "  cp $(pwd)/bin/sahyacode-darwin-arm64 ~/.local/bin/sahyacode"
+echo "  cp $(pwd)/${OUTPUT_NAME} ~/.local/bin/sahyacode"
 echo ""
 echo "Or to test directly:"
-echo "  $(pwd)/bin/sahyacode --version"
+echo "  $(pwd)/sahyacode --version"

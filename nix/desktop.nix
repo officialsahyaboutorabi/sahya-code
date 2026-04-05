@@ -21,11 +21,14 @@
   openssl,
   webkitgtk_4_1,
   gst_all_1,
-  opencode,
+  opencode, # passed from flake.nix - this is actually sahyacode
 }:
+let
+  sahyacode = opencode;
+in
 rustPlatform.buildRustPackage (finalAttrs: {
-  pname = "opencode-desktop";
-  inherit (opencode)
+  pname = "sahyacode-desktop";
+  inherit (sahyacode)
     version
     src
     node_modules
@@ -72,7 +75,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     patchShebangs packages/desktop/node_modules
 
     mkdir -p packages/desktop/src-tauri/sidecars
-    cp ${opencode}/bin/opencode packages/desktop/src-tauri/sidecars/opencode-cli-${stdenv.hostPlatform.rust.rustcTarget}
+    cp ${sahyacode}/bin/sahyacode packages/desktop/src-tauri/sidecars/opencode-cli-${stdenv.hostPlatform.rust.rustcTarget}
   '';
 
   # see publish-tauri job in .github/workflows/publish.yml
@@ -86,15 +89,15 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # should be removed once binary is renamed or decided otherwise
   # darwin output is a .app bundle so no conflict
   postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
-    mv $out/bin/OpenCode $out/bin/opencode-desktop
-    sed -i 's|^Exec=OpenCode$|Exec=opencode-desktop|' $out/share/applications/OpenCode.desktop
+    mv $out/bin/OpenCode $out/bin/sahyacode-desktop
+    sed -i 's|^Exec=OpenCode$|Exec=sahyacode-desktop|' $out/share/applications/OpenCode.desktop
   '';
 
   meta = {
-    description = "OpenCode Desktop App";
-    homepage = "https://opencode.ai";
+    description = "SahyaCode Desktop App";
+    homepage = "https://github.com/officialsahyaboutorabi/sahya-code";
     license = lib.licenses.mit;
-    mainProgram = "opencode-desktop";
-    inherit (opencode.meta) platforms;
+    mainProgram = "sahyacode-desktop";
+    inherit (sahyacode.meta) platforms;
   };
 })

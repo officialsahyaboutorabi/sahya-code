@@ -40,6 +40,7 @@ import { SessionProcessor } from "./processor"
 import { TaskTool } from "@/tool/task"
 import { Tool } from "@/tool/tool"
 import { Permission } from "@/permission"
+import * as ObservatoryHooks from "@/observatory/hooks"
 import { SessionStatus } from "./status"
 import { LLM } from "./llm"
 import { Shell } from "@/shell/shell"
@@ -465,6 +466,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                     { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID, args },
                     output,
                   )
+                  // Capture for Observatory
+                  ObservatoryHooks.captureToolCall(item.id, args)
+                  ObservatoryHooks.captureAction(`Executed tool`, item.id)
                   return output
                 }),
               )
@@ -497,6 +501,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
                   result,
                 )
+                
+                // Capture for Observatory
+                ObservatoryHooks.captureToolCall(key, args)
+                ObservatoryHooks.captureAction(`Executed MCP tool`, key)
 
                 const textParts: string[] = []
                 const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []

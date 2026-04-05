@@ -40,7 +40,7 @@ import { KeybindProvider, useKeybind } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
 import { Session } from "@tui/routes/session"
-// import { ObservatoryRoute } from "@tui/routes/observatory"
+import { ObservatoryRoute } from "@tui/routes/observatory"
 import { PromptHistoryProvider } from "./component/prompt/history"
 import { FrecencyProvider } from "./component/prompt/frecency"
 import { PromptStashProvider } from "./component/prompt/stash"
@@ -675,11 +675,10 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         aliases: ["obs", "watch"],
       },
       onSelect: () => {
-        toast.show({
-          variant: "info",
-          title: "Observatory",
-          message: "The Observatory feature is coming soon! Use 'sahyacode observatory --preview' from CLI for now.",
-          duration: 5000,
+        const sessionID = route.data.type === "session" ? route.data.sessionID : undefined
+        route.navigate({
+          type: "observatory",
+          sessionID,
         })
         dialog.clear()
       },
@@ -960,6 +959,9 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
           </Match>
           <Match when={route.data.type === "session"}>
             <Session />
+          </Match>
+          <Match when={route.data.type === "observatory"}>
+            <ObservatoryRoute />
           </Match>
         </Switch>
       </Show>

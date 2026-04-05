@@ -36,14 +36,18 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
   const parameters = z.object({
     name: z
       .string()
-      .min(1, "Skill name cannot be empty")
+      .min(3, "Skill name must be at least 3 characters long")
       .refine(
-        (val) => !/^[\}\]:\[\{\s]+$/.test(val),
+        (val) => !/^[\}\]:\[\{\s\-]+$/.test(val),
         "Invalid skill name - appears to be malformed JSON. Please provide the exact skill name from the available skills list."
       )
       .refine(
         (val) => !/^[<>=]{7,}/.test(val),
         "Invalid skill name - appears to contain git merge conflict markers (<<<<<<<, =======, >>>>>>>). Please provide the exact skill name from the available skills list."
+      )
+      .refine(
+        (val) => !/^[:\-\s]+$/.test(val),
+        "Invalid skill name - contains only special characters. Please provide the exact skill name from the available skills list."
       )
       .describe(`The name of the skill from available_skills${hint}`),
   })
@@ -51,6 +55,27 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
   return {
     description,
     parameters,
+    formatValidationError(error: z.ZodError) {
+      const issues = error.issues.map((issue) => {
+        if (issue.message.includes("git merge conflict")) {
+          return `The skill name appears to contain git merge conflict markers. Please use ONLY the skill name without any <<<, ===, or >>> characters.`
+        }
+        if (issue.message.includes("malformed JSON")) {
+          return `The skill name appears to be malformed. Please provide ONLY the exact skill name (e.g., "ui-developer", "code-review", "system-design").`
+        }
+        return issue.message
+      })
+      return [
+        "Invalid skill name provided.",
+        "",
+        ...issues,
+        "",
+        "IMPORTANT: Use the EXACT skill name from the available skills list above.",
+        "Do not include any special characters, brackets, or conflict markers.",
+        "",
+        `Example: ${examples}`,
+      ].join("\n")
+    },
     async execute(params: z.infer<typeof parameters>, ctx) {
       const skill = await Skill.get(params.name)
 

@@ -200,7 +200,7 @@ function stateApi(sync: ReturnType<typeof useSync>): TuiPluginApi["state"] {
 function appApi(): TuiPluginApi["app"] {
   return {
     get version() {
-      return Installation.VERSION
+      return `v${Installation.VERSION}`
     },
   }
 }

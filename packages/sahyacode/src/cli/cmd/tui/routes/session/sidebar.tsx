@@ -122,7 +122,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <span style={{ fg: theme.text }}>
                 <b>Code</b>
               </span>{" "}
-              <span>{Installation.VERSION}</span>
+              <span>v{Installation.VERSION}</span>
             </text>
           </TuiPluginRuntime.Slot>
         </box>

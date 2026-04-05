@@ -2,8 +2,8 @@
 
 This document summarizes all changes made to rebrand opencode to Sahya Code with Ollama and LiteLLM provider support.
 
-**Current Version:** v2.13.4  
-**Last Updated:** 2026-04-02
+**Current Version:** v2.13.6  
+**Last Updated:** 2026-04-05
 
 ---
 
@@ -321,6 +321,50 @@ sahya-code/
 │   └── install.sh         # Public install script
 ├── version.txt            # Current version
 └── install.sh             # Local install script
+```
+
+---
+
+## New Modules (v2.13.6)
+
+### Code Intelligence Module
+
+**Location:** `packages/sahyacode/src/code-intelligence/`
+
+Provides deep codebase understanding capabilities:
+
+- **AST Parsing** - Tree-sitter integration for TypeScript/JavaScript (extensible to other languages)
+- **Dependency Graph** - Visualize imports, exports, and function call relationships
+- **Semantic Search** - Find code by meaning, not just text
+- **Code Metrics** - Complexity analysis, lines of code, function counts
+- **Dead Code Detection** - Identify potentially unused code
+
+**CLI Command:**
+```bash
+sahyacode analyze ./src
+sahyacode analyze ./src --circular    # Detect circular dependencies
+sahyacode analyze ./src --dead-code   # Find unused code
+sahyacode analyze ./src --symbols "auth"  # Search for symbols
+```
+
+### Live Agent Observatory Module
+
+**Location:** `packages/sahyacode/src/observatory/`
+
+Real-time visualization of AI agent activity:
+
+- **Event Streaming** - Capture tool calls, file operations, LLM requests, thoughts
+- **TUI Dashboard** - Live progress tracking with thought visualization
+- **Browser Preview** - HTTP server with auto-refresh for web projects
+- **Checkpoints** - Save/restore session state snapshots
+- **Timeline** - Action history with status indicators
+
+**CLI Command:**
+```bash
+sahyacode observatory                    # Observe current session
+sahyacode observatory --preview          # Start with browser preview
+sahyacode observatory --port 8080        # Custom preview port
+sahyacode observatory abc123 --open      # Observe specific session
 ```
 
 ---

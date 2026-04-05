@@ -5,6 +5,50 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.13.6] - 2026-04-05
+
+### Added
+
+- **Code Intelligence Module** (WIP) - New module for deep codebase understanding with AST parsing, dependency graphs, and semantic search. Includes:
+  - Tree-sitter integration for multi-language AST parsing
+  - Dependency graph builder with circular dependency detection
+  - Semantic symbol search
+  - Code metrics (complexity, lines of code)
+  - Dead code detection
+  - New CLI command: `sahyacode analyze <path>`
+
+- **Live Agent Observatory Module** (WIP) - Real-time visualization of AI agent activity:
+  - Event streaming for tool calls, file operations, and thoughts
+  - TUI dashboard with progress tracking
+  - Browser preview server with live reload
+  - Checkpoint/rollback system
+  - Action timeline visualization
+  - New CLI command: `sahyacode observatory [session-id] --preview`
+
+### Fixed
+
+- **Upgrade command** - Fixed version comparison and added downgrade prevention:
+  - Versions are now normalized (stripped of 'v' prefix) before comparison
+  - Prevents accidental downgrades to older versions
+  - Clear messaging when already on latest version
+- **Version display** - CLI and TUI now consistently show version with 'v' prefix (e.g., `v2.13.6`)
+- **Skill tool validation** - Added validation to catch malformed skill names and provide better error messages with "Did you mean?" suggestions
+
+### Changed
+
+- **npm package references** - Migrated from `opencode-ai` to `sahyacode` npm package references throughout codebase
+
+## [v2.13.5] - 2026-04-05
+
+### Added
+
+- **Linux support** - Added build targets for Linux x64, arm64, and musl variants
+- **GitHub Actions workflow** - Simplified release workflow using `bun build --compile`
+
+### Fixed
+
+- **Version mismatch** - Binary now correctly reports v2.13.5 instead of v2.13.4
+
 ## [v2.13.4] - 2026-04-02
 
 ### Fixed

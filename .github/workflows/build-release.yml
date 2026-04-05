@@ -16,73 +16,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.2.2
       
-      - name: Install
+      - name: Install root dependencies
         run: bun install
       
-      - name: Build Linux x64
+      - name: Build Linux x64 binary
         run: |
           mkdir -p dist/sahyacode-linux-x64/bin
           cd packages/sahyacode
           bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile ../../dist/sahyacode-linux-x64/bin/sahyacode
       
-      - name: Build Linux ARM64
+      - name: Package Linux x64
         run: |
-          mkdir -p dist/sahyacode-linux-arm64/bin
-          cd packages/sahyacode
-          bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile ../../dist/sahyacode-linux-arm64/bin/sahyacode
-      
-      - name: Package
-        run: |
-          cd dist
-          tar -czf sahyacode-linux-x64.tar.gz sahyacode-linux-x64/bin/sahyacode
-          tar -czf sahyacode-linux-arm64.tar.gz sahyacode-linux-arm64/bin/sahyacode
+          cd dist/sahyacode-linux-x64/bin
+          tar -czf ../../../sahyacode-linux-x64.tar.gz sahyacode
+          cd ../../..
           ls -la *.tar.gz
       
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-binaries
-          path: dist/*.tar.gz
+          name: linux-x64
+          path: sahyacode-linux-x64.tar.gz
 
   build-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.2.2
       
-      - name: Install
+      - name: Install root dependencies  
         run: bun install
       
-      - name: Build macOS ARM64
+      - name: Build macOS ARM64 binary
         run: |
           mkdir -p dist/sahyacode-darwin-arm64/bin
           cd packages/sahyacode
           bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-arm64/bin/sahyacode
       
-      - name: Build macOS x64
+      - name: Package macOS ARM64
         run: |
-          mkdir -p dist/sahyacode-darwin-x64/bin
-          cd packages/sahyacode
-          bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-x64/bin/sahyacode
-      
-      - name: Package
-        run: |
-          cd dist
-          zip -r sahyacode-darwin-arm64.zip sahyacode-darwin-arm64/bin/sahyacode
-          zip -r sahyacode-darwin-x64.zip sahyacode-darwin-x64/bin/sahyacode
+          cd dist/sahyacode-darwin-arm64/bin
+          zip -r ../../../sahyacode-darwin-arm64.zip sahyacode
+          cd ../../..
           ls -la *.zip
       
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-binaries
-          path: dist/*.zip
+          name: macos-arm64
+          path: sahyacode-darwin-arm64.zip
 
-  release:
+  create-release:
     needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
@@ -91,10 +81,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: binaries
-          pattern: '*-binaries'
           merge-multiple: true
       
-      - name: List files
+      - name: List binaries
         run: ls -la binaries/
       
       - name: Create Release
@@ -103,8 +92,5 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           name: SahyaCode ${{ github.event.inputs.version }}
           files: binaries/**
-          draft: false
-          prerelease: false
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

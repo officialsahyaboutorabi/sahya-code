@@ -22,7 +22,7 @@ export type PluginRoute = {
 
 /* export type ObservatoryRoute = {
   type: "observatory"
-  sessionID: string
+  sessionID?: string
 } */
 
 export type Route = HomeRoute | SessionRoute | PluginRoute /* | ObservatoryRoute */

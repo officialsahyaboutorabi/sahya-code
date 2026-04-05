@@ -668,6 +668,24 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       category: "System",
     },
     {
+      title: "Open Observatory",
+      value: "app.observatory",
+      slash: {
+        name: "observe",
+        aliases: ["obs", "watch"],
+      },
+      onSelect: () => {
+        toast.show({
+          variant: "info",
+          title: "Observatory",
+          message: "The Observatory feature is coming soon! Use 'sahyacode observatory --preview' from CLI for now.",
+          duration: 5000,
+        })
+        dialog.clear()
+      },
+      category: "System",
+    },
+    {
       title: "Switch theme",
       value: "theme.switch",
       keybind: "theme_list",

@@ -1,7 +1,8 @@
-import { createSignal, onMount, onCleanup, Show, createEffect } from "solid-js"
+import { createSignal, onMount, onCleanup, Show } from "solid-js"
 import { useRoute, useRouteData } from "@tui/context/route"
 import { useTheme } from "@tui/context/theme"
 import { useTerminalDimensions, useKeyboard } from "@opentui/solid"
+import { useKeybind } from "@tui/context/keybind"
 import { Observatory } from "@/observatory"
 import { Log } from "@/util/log"
 import { Instance } from "@/project/instance"
@@ -16,6 +17,7 @@ export function ObservatoryRoute() {
   const routeCtx = useRoute()
   const { theme } = useTheme()
   const keyboard = useKeyboard()
+  const keybind = useKeybind()
   const dimensions = useTerminalDimensions()
   
   const [state, setState] = createSignal(Observatory.getState())
@@ -25,34 +27,59 @@ export function ObservatoryRoute() {
   let server: http.Server | null = null
   let port = 3456
 
+  const handleExit = () => {
+    log.info("Exiting observatory")
+    Observatory.disable()
+    
+    if (server) {
+      server.close()
+      server = null
+    }
+    
+    if (interval) {
+      clearInterval(interval)
+      interval = null
+    }
+    
+    routeCtx.navigate({ type: "home" })
+  }
+
   // Enable observatory when entering
   onMount(() => {
     log.info("Observatory mounted")
-    
-    // Enable observatory hooks
     Observatory.enable()
     
-    // Update state periodically
     interval = setInterval(() => {
       setState(Observatory.getState())
     }, 200)
 
-    // Start HTTP server for browser preview
     startServer()
+  })
 
-    // Keyboard handler - use simpler approach
-    const unsub = keyboard.subscribe((key) => {
-      if (key.key === 'q' || key.key === 'Q') {
-        log.info("Exit key pressed (q)")
-        handleExit()
-      } else if (key.key === 'c' && key.ctrl) {
-        log.info("Ctrl+C pressed")
-        handleExit()
-      }
-    })
+  onCleanup(() => {
+    log.info("Observatory cleanup")
+    Observatory.disable()
+    if (server) {
+      server.close()
+    }
+    if (interval) {
+      clearInterval(interval)
+    }
+  })
 
-    return () => {
-      unsub()
+  // Handle keyboard - use the same approach as session route
+  useKeyboard((evt) => {
+    // Check for 'q' key directly
+    if (evt.name === "q" || evt.name === "Q") {
+      log.info("Exit key pressed (q)")
+      handleExit()
+      return
+    }
+    // Check for escape or app_exit keybind
+    if (evt.name === "escape" || keybind.match("app_exit", evt)) {
+      log.info("Exit key pressed (escape/app_exit)")
+      handleExit()
+      return
     }
   })
 
@@ -60,8 +87,14 @@ export function ObservatoryRoute() {
     const workDir = Instance.worktree || process.cwd()
     
     try {
-      // Create simple HTTP server
       server = http.createServer((req, res) => {
+        if (req.url === '/observatory-status') {
+          const s = Observatory.getState()
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify(s))
+          return
+        }
+
         const filePath = path.join(workDir, req.url === '/' ? 'index.html' : req.url || '')
         
         fs.readFile(filePath, (err, data) => {
@@ -120,16 +153,6 @@ export function ObservatoryRoute() {
         })
       })
 
-      // Status endpoint
-      server.on('request', (req, res) => {
-        if (req.url === '/observatory-status') {
-          const s = Observatory.getState()
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify(s))
-          return
-        }
-      })
-
       server.listen(port, () => {
         log.info(`Observatory server started on port ${port}`)
         setBrowserUrl(`http://localhost:${port}`)
@@ -150,37 +173,6 @@ export function ObservatoryRoute() {
     }
   }
 
-  const handleExit = () => {
-    log.info("Exiting observatory")
-    Observatory.disable()
-    
-    // Stop server
-    if (server) {
-      server.close()
-      server = null
-    }
-    
-    // Clear interval
-    if (interval) {
-      clearInterval(interval)
-      interval = null
-    }
-    
-    // Navigate back
-    routeCtx.navigate({ type: "home" })
-  }
-
-  onCleanup(() => {
-    log.info("Observatory cleanup")
-    Observatory.disable()
-    if (server) {
-      server.close()
-    }
-    if (interval) {
-      clearInterval(interval)
-    }
-  })
-
   const currentState = state()
 
   return (
@@ -192,7 +184,7 @@ export function ObservatoryRoute() {
         </text>
         <box flexGrow={1} />
         <text color={theme().textMuted}>
-          Press 'q' to exit
+          Press 'q' or Esc to exit
         </text>
       </box>
 

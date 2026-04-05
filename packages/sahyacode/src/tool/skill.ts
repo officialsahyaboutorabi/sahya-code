@@ -34,7 +34,14 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
   const hint = examples.length > 0 ? ` (e.g., ${examples}, ...)` : ""
 
   const parameters = z.object({
-    name: z.string().describe(`The name of the skill from available_skills${hint}`),
+    name: z
+      .string()
+      .min(1, "Skill name cannot be empty")
+      .refine(
+        (val) => !/^[\}\]:\[\{\s]+$/.test(val),
+        "Invalid skill name - appears to be malformed JSON. Please provide the exact skill name from the available skills list."
+      )
+      .describe(`The name of the skill from available_skills${hint}`),
   })
 
   return {
@@ -45,7 +52,14 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
 
       if (!skill) {
         const available = await Skill.all().then((x) => x.map((skill) => skill.name).join(", "))
-        throw new Error(`Skill "${params.name}" not found. Available skills: ${available || "none"}`)
+        const didYouMean = available
+          .split(", ")
+          .find((name) => name.toLowerCase().includes(params.name.toLowerCase()) ||
+            params.name.toLowerCase().includes(name.toLowerCase()))
+        const suggestion = didYouMean ? ` Did you mean '${didYouMean}'?` : ""
+        throw new Error(
+          `Skill "${params.name}" not found.${suggestion} Available skills: ${available || "none"}`
+        )
       }
 
       await ctx.ask({

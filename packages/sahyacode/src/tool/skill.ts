@@ -41,6 +41,10 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
         (val) => !/^[\}\]:\[\{\s]+$/.test(val),
         "Invalid skill name - appears to be malformed JSON. Please provide the exact skill name from the available skills list."
       )
+      .refine(
+        (val) => !/^[<>=]{7,}/.test(val),
+        "Invalid skill name - appears to contain git merge conflict markers (<<<<<<<, =======, >>>>>>>). Please provide the exact skill name from the available skills list."
+      )
       .describe(`The name of the skill from available_skills${hint}`),
   })
 

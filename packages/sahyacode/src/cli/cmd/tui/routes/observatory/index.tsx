@@ -1,54 +1,190 @@
-import { createSignal, onMount, onCleanup, Show } from "solid-js"
+import { createSignal, onMount, onCleanup, Show, createEffect } from "solid-js"
 import { useRoute, useRouteData } from "@tui/context/route"
 import { useTheme } from "@tui/context/theme"
-import { useKeyboard } from "@opentui/solid"
+import { useTerminalDimensions, useKeyboard } from "@opentui/solid"
 import { Observatory } from "@/observatory"
 import { Log } from "@/util/log"
+import { Instance } from "@/project/instance"
+import http from "http"
+import fs from "fs"
+import path from "path"
 
 const log = Log.create({ service: "observatory.route" })
 
 export function ObservatoryRoute() {
   const route = useRouteData("observatory")
+  const routeCtx = useRoute()
   const { theme } = useTheme()
   const keyboard = useKeyboard()
+  const dimensions = useTerminalDimensions()
   
   const [state, setState] = createSignal(Observatory.getState())
-  const [browserUrl] = createSignal("http://localhost:3456")
+  const [browserUrl, setBrowserUrl] = createSignal<string | null>(null)
+  const [error, setError] = createSignal<string | null>(null)
   let interval: ReturnType<typeof setInterval> | null = null
+  let server: http.Server | null = null
+  let port = 3456
 
+  // Enable observatory when entering
   onMount(() => {
+    log.info("Observatory mounted")
+    
+    // Enable observatory hooks
+    Observatory.enable()
+    
     // Update state periodically
     interval = setInterval(() => {
       setState(Observatory.getState())
-    }, 500)
+    }, 200)
 
-    // Keyboard shortcuts
-    const unsubKeyboard = keyboard.subscribe((key) => {
-      if (key.key === "q" || (key.key === "c" && key.ctrl)) {
-        handleBack()
+    // Start HTTP server for browser preview
+    startServer()
+
+    // Keyboard handler - use simpler approach
+    const unsub = keyboard.subscribe((key) => {
+      if (key.key === 'q' || key.key === 'Q') {
+        log.info("Exit key pressed (q)")
+        handleExit()
+      } else if (key.key === 'c' && key.ctrl) {
+        log.info("Ctrl+C pressed")
+        handleExit()
       }
     })
 
     return () => {
-      unsubKeyboard()
+      unsub()
     }
   })
 
+  const startServer = async () => {
+    const workDir = Instance.worktree || process.cwd()
+    
+    try {
+      // Create simple HTTP server
+      server = http.createServer((req, res) => {
+        const filePath = path.join(workDir, req.url === '/' ? 'index.html' : req.url || '')
+        
+        fs.readFile(filePath, (err, data) => {
+          if (err) {
+            if (req.url === '/') {
+              res.writeHead(200, { 'Content-Type': 'text/html' })
+              res.end(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <title>Observatory Preview</title>
+                  <style>
+                    body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 40px; }
+                    h1 { color: #ff4f00; }
+                    .status { padding: 20px; background: #2a2a2a; border-radius: 8px; margin: 20px 0; }
+                  </style>
+                </head>
+                <body>
+                  <h1>🔭 Observatory Preview</h1>
+                  <div class="status">
+                    <p>Working directory: ${workDir}</p>
+                    <p>Status: Observatory is monitoring the agent...</p>
+                    <p id="activity">Waiting for activity...</p>
+                  </div>
+                  <script>
+                    setInterval(async () => {
+                      try {
+                        const res = await fetch('/observatory-status');
+                        const data = await res.json();
+                        document.getElementById('activity').textContent = 
+                          'Current: ' + (data.currentTask || 'Idle') + 
+                          ' | Progress: ' + data.progress + '%';
+                      } catch(e) {}
+                    }, 1000);
+                  </script>
+                </body>
+                </html>
+              `)
+              return
+            }
+            res.writeHead(404)
+            res.end('Not found')
+            return
+          }
+          
+          const ext = path.extname(filePath)
+          const contentType = {
+            '.html': 'text/html',
+            '.js': 'application/javascript',
+            '.css': 'text/css',
+            '.json': 'application/json',
+          }[ext] || 'text/plain'
+          
+          res.writeHead(200, { 'Content-Type': contentType })
+          res.end(data)
+        })
+      })
+
+      // Status endpoint
+      server.on('request', (req, res) => {
+        if (req.url === '/observatory-status') {
+          const s = Observatory.getState()
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify(s))
+          return
+        }
+      })
+
+      server.listen(port, () => {
+        log.info(`Observatory server started on port ${port}`)
+        setBrowserUrl(`http://localhost:${port}`)
+      })
+
+      server.on('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+          port++
+          server?.listen(port)
+        } else {
+          log.error('Server error', { err })
+          setError(`Server error: ${err.message}`)
+        }
+      })
+    } catch (err) {
+      log.error('Failed to start server', { err })
+      setError(`Failed to start server: ${err}`)
+    }
+  }
+
+  const handleExit = () => {
+    log.info("Exiting observatory")
+    Observatory.disable()
+    
+    // Stop server
+    if (server) {
+      server.close()
+      server = null
+    }
+    
+    // Clear interval
+    if (interval) {
+      clearInterval(interval)
+      interval = null
+    }
+    
+    // Navigate back
+    routeCtx.navigate({ type: "home" })
+  }
+
   onCleanup(() => {
+    log.info("Observatory cleanup")
+    Observatory.disable()
+    if (server) {
+      server.close()
+    }
     if (interval) {
       clearInterval(interval)
     }
   })
 
-  const handleBack = () => {
-    const routeCtx = useRoute()
-    routeCtx.navigate({ type: "home" })
-  }
-
   const currentState = state()
 
   return (
-    <box flexDirection="column" width="100%" height="100%" padding={2}>
+    <box flexDirection="column" width="100%" height="100%" padding={1}>
       {/* Header */}
       <box flexDirection="row" marginBottom={1}>
         <text bold color={theme().accent}>
@@ -56,9 +192,15 @@ export function ObservatoryRoute() {
         </text>
         <box flexGrow={1} />
         <text color={theme().textMuted}>
-          Press 'q' or Ctrl+C to exit
+          Press 'q' to exit
         </text>
       </box>
+
+      <Show when={error()}>
+        <box backgroundColor={theme().error} padding={1} marginBottom={1}>
+          <text color="#fff">Error: {error()}</text>
+        </box>
+      </Show>
 
       {/* Status Bar */}
       <box 
@@ -85,14 +227,14 @@ export function ObservatoryRoute() {
       </Show>
 
       {/* Progress Bar */}
-      <box flexDirection="row" marginBottom={1}>
+      <box flexDirection="row" marginBottom={1} height={1}>
         <box 
-          width={`${currentState.progress}%`} 
+          width={`${Math.max(1, currentState.progress)}%`} 
           height={1}
           backgroundColor={theme().accent}
         />
         <box 
-          width={`${100 - currentState.progress}%`} 
+          width={`${Math.max(1, 100 - currentState.progress)}%`} 
           height={1}
           backgroundColor={theme().bgSecondary}
         />
@@ -100,24 +242,28 @@ export function ObservatoryRoute() {
 
       {/* Recent Thoughts */}
       <box flexDirection="column" flexGrow={1} borderStyle="round" padding={1}>
-        <text bold marginBottom={1}>Recent Activity:</text>
+        <text bold marginBottom={1}>Recent Activity ({currentState.thoughts.length}):</text>
         <Show 
           when={currentState.thoughts.length > 0}
-          fallback={<text color={theme().textMuted}>No activity yet...</text>}
+          fallback={<text color={theme().textMuted}>No activity yet... Agent will appear here when it starts working.</text>}
         >
-          {currentState.thoughts.map((thought, i) => (
+          {currentState.thoughts.slice(0, 10).map((thought, i) => (
             <text key={i} color={i === 0 ? theme().text : theme().textMuted}>
-              • {thought}
+              • {thought.length > 60 ? thought.substring(0, 60) + "..." : thought}
             </text>
           ))}
         </Show>
       </box>
 
       {/* Browser Preview URL */}
-      <box flexDirection="row" marginTop={1} padding={1} borderStyle="round">
-        <text>Browser Preview: </text>
-        <text color={theme().accent}>{browserUrl()}</text>
-      </box>
+      <Show when={browserUrl()}>
+        <box flexDirection="row" marginTop={1} padding={1} borderStyle="round">
+          <text>Browser Preview: </text>
+          <text color={theme().accent}>{browserUrl()}</text>
+          <box flexGrow={1} />
+          <text color={theme().textMuted}>(Open in browser)</text>
+        </box>
+      </Show>
 
       {/* Last Action */}
       <Show when={currentState.lastAction}>

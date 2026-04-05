@@ -59,15 +59,11 @@ jobs:
           bun-version: latest
       
       - name: Install dependencies
-        run: |
-          cd packages/sahyacode
-          bun install
+        run: bun install
       
       - name: Build all targets
         id: build
-        run: |
-          cd packages/sahyacode
-          bun ./script/build.ts
+        run: cd packages/sahyacode && bun ./script/build.ts
         env:
           SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
           SAHYACODE_CHANNEL: "release"

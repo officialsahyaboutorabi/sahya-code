@@ -33,23 +33,38 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
     .join(", ")
   const hint = examples.length > 0 ? ` (e.g., ${examples}, ...)` : ""
 
+  // Helper to clean up malformed skill names
+  const cleanSkillName = (val: string): string => {
+    return val
+      // Remove common prefixes
+      .replace(/^\s*[>\-•*]\s*Loading skill\s*`?/i, "")
+      .replace(/^\s*[>\-•*]\s*Using skill\s*`?/i, "")
+      .replace(/^\s*[>\-•*]\s*Skill\s*:?\s*`?/i, "")
+      // Remove common suffixes
+      .replace(/`?\.\.\.$/, "")
+      .replace(/`?\s*\.\.\.$/, "")
+      // Remove backticks
+      .replace(/`/g, "")
+      // Remove brackets
+      .replace(/[\[\]\{\}]/g, "")
+      // Trim whitespace
+      .trim()
+  }
+
   const parameters = z.object({
     name: z
       .string()
-      .min(3, "Skill name must be at least 3 characters long")
-      .refine(
-        (val) => !/^[\}\]:\[\{\s\-]+$/.test(val),
-        "Invalid skill name - appears to be malformed JSON. Please provide the exact skill name from the available skills list."
+      .transform((val) => cleanSkillName(val))
+      .pipe(
+        z.string()
+          .min(3, "Skill name must be at least 3 characters long")
+          .max(50, "Skill name is too long")
+          .regex(
+            /^[a-z0-9\-]+$/,
+            "Skill name must contain only lowercase letters, numbers, and hyphens (e.g., 'ui-developer', 'code-review')"
+          )
       )
-      .refine(
-        (val) => !/^[<>=]{7,}/.test(val),
-        "Invalid skill name - appears to contain git merge conflict markers (<<<<<<<, =======, >>>>>>>). Please provide the exact skill name from the available skills list."
-      )
-      .refine(
-        (val) => !/^[:\-\s]+$/.test(val),
-        "Invalid skill name - contains only special characters. Please provide the exact skill name from the available skills list."
-      )
-      .describe(`The name of the skill from available_skills${hint}`),
+      .describe(`The EXACT skill name from the list above (lowercase, hyphenated)${hint}`),
   })
 
   return {
@@ -57,11 +72,8 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
     parameters,
     formatValidationError(error: z.ZodError) {
       const issues = error.issues.map((issue) => {
-        if (issue.message.includes("git merge conflict")) {
-          return `The skill name appears to contain git merge conflict markers. Please use ONLY the skill name without any <<<, ===, or >>> characters.`
-        }
-        if (issue.message.includes("malformed JSON")) {
-          return `The skill name appears to be malformed. Please provide ONLY the exact skill name (e.g., "ui-developer", "code-review", "system-design").`
+        if (issue.message.includes("lowercase letters, numbers, and hyphens")) {
+          return `Invalid skill name format. The skill name should be a simple lowercase string like "frontend-design" or "code-review". Do not include descriptions, prefixes like "> Loading skill", or backticks.`
         }
         return issue.message
       })
@@ -70,10 +82,15 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
         "",
         ...issues,
         "",
-        "IMPORTANT: Use the EXACT skill name from the available skills list above.",
-        "Do not include any special characters, brackets, or conflict markers.",
+        "IMPORTANT: Use ONLY the exact skill name from the available skills list above.",
         "",
-        `Example: ${examples}`,
+        "CORRECT examples:",
+        examples.split(", ").map(e => `  - ${e}`).join("\n"),
+        "",
+        "INCORRECT examples:",
+        '  - "> Loading skill `frontend-design`..."',
+        '  - "Skill: frontend-design"',
+        '  - "Using `frontend-design`"',
       ].join("\n")
     },
     async execute(params: z.infer<typeof parameters>, ctx) {

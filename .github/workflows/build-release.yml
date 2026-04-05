@@ -1,165 +1,108 @@
-name: Build and Release SahyaCode
+name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., v1.0.0)'
+        description: 'Version (e.g., v2.13.5)'
         required: true
-        type: string
+        default: 'v2.13.5'
 
 permissions:
   contents: write
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.version.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      
-      - name: Determine version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-            VERSION="${VERSION#v}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-          else
-            TAG=${GITHUB_REF#refs/tags/}
-            VERSION="${TAG#v}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-          fi
-          echo "Building version: $VERSION"
-
   build-linux:
-    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
         with:
-          fetch-depth: 0
+          bun-version: 1.2.2
       
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
+      - name: Install
         run: bun install
       
-      - name: Build Linux binaries
+      - name: Build Linux x64
         run: |
+          mkdir -p dist/sahyacode-linux-x64/bin
           cd packages/sahyacode
-          # Build all Linux targets
-          for target in bun-linux-arm64 bun-linux-x64 bun-linux-x64-baseline bun-linux-arm64-musl bun-linux-x64-musl bun-linux-x64-musl-baseline; do
-            echo "Building for $target..."
-            name="sahyacode-${target#bun-}"
-            mkdir -p "dist/$name/bin"
-            
-            bun build --compile --target="$target" ./src/index.ts --outfile "dist/$name/bin/sahyacode" 2>&1 || {
-              echo "Failed to build $target"
-              continue
-            }
-            
-            # Create archive
-            cd "dist/$name/bin"
-            tar -czf "../../../$name.tar.gz" *
-            cd ../../..
-          done
-          
-          ls -la dist/
-        env:
-          SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
+          bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile ../../dist/sahyacode-linux-x64/bin/sahyacode
       
-      - name: Upload Linux binaries
-        uses: actions/upload-artifact@v4
+      - name: Build Linux ARM64
+        run: |
+          mkdir -p dist/sahyacode-linux-arm64/bin
+          cd packages/sahyacode
+          bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile ../../dist/sahyacode-linux-arm64/bin/sahyacode
+      
+      - name: Package
+        run: |
+          cd dist
+          tar -czf sahyacode-linux-x64.tar.gz sahyacode-linux-x64/bin/sahyacode
+          tar -czf sahyacode-linux-arm64.tar.gz sahyacode-linux-arm64/bin/sahyacode
+          ls -la *.tar.gz
+      
+      - uses: actions/upload-artifact@v4
         with:
-          name: sahyacode-linux-binaries
-          path: packages/sahyacode/dist/*.tar.gz
+          name: linux-binaries
+          path: dist/*.tar.gz
 
   build-macos:
-    needs: version
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
         with:
-          fetch-depth: 0
+          bun-version: 1.2.2
       
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
+      - name: Install
         run: bun install
       
-      - name: Build macOS binaries
+      - name: Build macOS ARM64
         run: |
+          mkdir -p dist/sahyacode-darwin-arm64/bin
           cd packages/sahyacode
-          # Build all macOS targets
-          for target in bun-darwin-arm64 bun-darwin-x64 bun-darwin-x64-baseline; do
-            echo "Building for $target..."
-            name="sahyacode-${target#bun-}"
-            mkdir -p "dist/$name/bin"
-            
-            bun build --compile --target="$target" ./src/index.ts --outfile "dist/$name/bin/sahyacode" 2>&1 || {
-              echo "Failed to build $target"
-              continue
-            }
-            
-            # Create archive
-            cd "dist/$name/bin"
-            zip -r "../../../$name.zip" *
-            cd ../../..
-          done
-          
-          ls -la dist/
-        env:
-          SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
+          bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-arm64/bin/sahyacode
       
-      - name: Upload macOS binaries
-        uses: actions/upload-artifact@v4
+      - name: Build macOS x64
+        run: |
+          mkdir -p dist/sahyacode-darwin-x64/bin
+          cd packages/sahyacode
+          bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-x64/bin/sahyacode
+      
+      - name: Package
+        run: |
+          cd dist
+          zip -r sahyacode-darwin-arm64.zip sahyacode-darwin-arm64/bin/sahyacode
+          zip -r sahyacode-darwin-x64.zip sahyacode-darwin-x64/bin/sahyacode
+          ls -la *.zip
+      
+      - uses: actions/upload-artifact@v4
         with:
-          name: sahyacode-macos-binaries
-          path: packages/sahyacode/dist/*.zip
+          name: macos-binaries
+          path: dist/*.zip
 
   release:
-    needs: [version, build-linux, build-macos]
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          path: ./binaries
-          pattern: sahyacode-*-binaries
+          path: binaries
+          pattern: '*-binaries'
           merge-multiple: true
       
-      - name: List downloaded files
-        run: |
-          echo "Downloaded files:"
-          find ./binaries -type f -ls
+      - name: List files
+        run: ls -la binaries/
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ./binaries/**
-          tag_name: ${{ needs.version.outputs.tag }}
-          name: SahyaCode ${{ needs.version.outputs.tag }}
+          tag_name: ${{ github.event.inputs.version }}
+          name: SahyaCode ${{ github.event.inputs.version }}
+          files: binaries/**
           draft: false
           prerelease: false
           generate_release_notes: true

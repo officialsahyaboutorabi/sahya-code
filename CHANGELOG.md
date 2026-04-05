@@ -5,6 +5,18 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.13.7] - 2026-04-05
+
+### Fixed
+
+- **Upgrade command** - Fixed /upgrade slash command failing with "Update Check Failed"
+- **Package naming** - Changed all references from opencode-ai/opencode to sahyacode:
+  - Installation method detection
+  - NPM registry URL
+  - Upgrade commands (npm, pnpm, bun, choco, scoop, brew)
+  - Uninstall commands
+- **Server API** - Defaults to "curl" method when installation method detection fails
+
 ## [v2.13.6] - 2026-04-05
 
 ### Added

@@ -61,9 +61,13 @@ jobs:
       - name: Install dependencies
         run: bun install
       
-      - name: Build all targets
+      - name: Build Linux targets
         id: build
-        run: cd packages/sahyacode && bun ./script/build.ts
+        run: |
+          cd packages/sahyacode
+          echo "Building sahyacode v${{ needs.version.outputs.version }} for Linux..."
+          # Build only Linux targets on Ubuntu
+          bun ./script/build.ts 2>&1 || (echo "Build failed!" && exit 1)
         env:
           SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
           SAHYACODE_CHANNEL: "release"

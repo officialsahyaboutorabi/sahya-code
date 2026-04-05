@@ -177,9 +177,9 @@ export namespace Installation {
             { name: "yarn", command: () => text(["yarn", "global", "list"]) },
             { name: "pnpm", command: () => text(["pnpm", "list", "-g", "--depth=0"]) },
             { name: "bun", command: () => text(["bun", "pm", "ls", "-g"]) },
-            { name: "brew", command: () => text(["brew", "list", "--formula", "opencode"]) },
-            { name: "scoop", command: () => text(["scoop", "list", "opencode"]) },
-            { name: "choco", command: () => text(["choco", "list", "--limit-output", "opencode"]) },
+            { name: "brew", command: () => text(["brew", "list", "--formula", "sahyacode"]) },
+            { name: "scoop", command: () => text(["scoop", "list", "sahyacode"]) },
+            { name: "choco", command: () => text(["choco", "list", "--limit-output", "sahyacode"]) },
           ]
 
           checks.sort((a, b) => {
@@ -193,7 +193,7 @@ export namespace Installation {
           for (const check of checks) {
             const output = yield* check.command()
             const installedName =
-              check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "opencode" : "opencode-ai"
+              check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "sahyacode" : "sahyacode"
             if (output.includes(installedName)) {
               return check.name
             }
@@ -227,7 +227,7 @@ export namespace Installation {
             const registry = reg.endsWith("/") ? reg.slice(0, -1) : reg
             const channel = CHANNEL
             const response = yield* httpOk.execute(
-              HttpClientRequest.get(`${registry}/opencode-ai/${channel}`).pipe(HttpClientRequest.acceptJson),
+              HttpClientRequest.get(`${registry}/sahyacode/${channel}`).pipe(HttpClientRequest.acceptJson),
             )
             const data = yield* HttpClientResponse.schemaBodyJson(NpmPackage)(response)
             return data.version
@@ -273,13 +273,13 @@ export namespace Installation {
               result = yield* upgradeCurl(target)
               break
             case "npm":
-              result = yield* run(["npm", "install", "-g", `opencode-ai@${target}`])
+              result = yield* run(["npm", "install", "-g", `sahyacode@${target}`])
               break
             case "pnpm":
-              result = yield* run(["pnpm", "install", "-g", `opencode-ai@${target}`])
+              result = yield* run(["pnpm", "install", "-g", `sahyacode@${target}`])
               break
             case "bun":
-              result = yield* run(["bun", "install", "-g", `opencode-ai@${target}`])
+              result = yield* run(["bun", "install", "-g", `sahyacode@${target}`])
               break
             case "brew": {
               const formula = yield* getBrewFormula()
@@ -304,10 +304,10 @@ export namespace Installation {
               break
             }
             case "choco":
-              result = yield* run(["choco", "upgrade", "opencode", `--version=${target}`, "-y"])
+              result = yield* run(["choco", "upgrade", "sahyacode", `--version=${target}`, "-y"])
               break
             case "scoop":
-              result = yield* run(["scoop", "install", `opencode@${target}`])
+              result = yield* run(["scoop", "install", `sahyacode@${target}`])
               break
             default:
               return yield* new UpgradeFailedError({ stderr: `Unknown method: ${m}` })

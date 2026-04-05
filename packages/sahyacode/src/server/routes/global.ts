@@ -288,9 +288,10 @@ export const GlobalRoutes = lazy(() =>
         }),
       ),
       async (c) => {
-        const method = await Installation.method()
+        let method = await Installation.method()
+        // Default to curl method if detection fails (most common installation method)
         if (method === "unknown") {
-          return c.json({ success: false, error: "Unknown installation method" }, 400)
+          method = "curl"
         }
         const target = c.req.valid("json").target || (await Installation.latest(method))
         const result = await Installation.upgrade(method, target)

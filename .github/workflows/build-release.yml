@@ -58,6 +58,11 @@ jobs:
         with:
           bun-version: latest
       
+      - name: Install dependencies
+        run: |
+          cd packages/sahyacode
+          bun install
+      
       - name: Build all targets
         id: build
         run: |

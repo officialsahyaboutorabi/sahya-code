@@ -12,36 +12,6 @@ permissions:
   contents: write
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: 1.2.2
-      
-      - name: Install root dependencies
-        run: bun install
-      
-      - name: Build Linux x64 binary
-        run: |
-          mkdir -p dist/sahyacode-linux-x64/bin
-          cd packages/sahyacode
-          bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile ../../dist/sahyacode-linux-x64/bin/sahyacode
-      
-      - name: Package Linux x64
-        run: |
-          cd dist/sahyacode-linux-x64/bin
-          tar -czf ../../../sahyacode-linux-x64.tar.gz sahyacode
-          cd ../../..
-          ls -la *.tar.gz
-      
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-x64
-          path: sahyacode-linux-x64.tar.gz
-
   build-macos:
     runs-on: macos-latest
     steps:
@@ -51,29 +21,71 @@ jobs:
         with:
           bun-version: 1.2.2
       
-      - name: Install root dependencies  
+      - name: Install dependencies
         run: bun install
       
       - name: Build macOS ARM64 binary
         run: |
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION="${VERSION#v}"
+          echo "Building version: $VERSION"
           mkdir -p dist/sahyacode-darwin-arm64/bin
           cd packages/sahyacode
-          bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-arm64/bin/sahyacode
+          SAHYACODE_VERSION="$VERSION" SAHYACODE_CHANNEL="latest" bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-arm64/bin/sahyacode
       
-      - name: Package macOS ARM64
+      - name: Test binary version
         run: |
-          cd dist/sahyacode-darwin-arm64/bin
-          zip -r ../../../sahyacode-darwin-arm64.zip sahyacode
-          cd ../../..
+          ./dist/sahyacode-darwin-arm64/bin/sahyacode --version
+      
+      - name: Package
+        run: |
+          cd dist
+          zip -r sahyacode-darwin-arm64.zip sahyacode-darwin-arm64
           ls -la *.zip
       
       - uses: actions/upload-artifact@v4
         with:
           name: macos-arm64
-          path: sahyacode-darwin-arm64.zip
+          path: dist/sahyacode-darwin-arm64.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.2
+      
+      - name: Install dependencies
+        run: bun install
+      
+      - name: Build Linux x64 binary
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION="${VERSION#v}"
+          echo "Building version: $VERSION"
+          mkdir -p dist/sahyacode-linux-x64/bin
+          cd packages/sahyacode
+          SAHYACODE_VERSION="$VERSION" SAHYACODE_CHANNEL="latest" bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile ../../dist/sahyacode-linux-x64/bin/sahyacode
+      
+      - name: Test binary version
+        run: |
+          ./dist/sahyacode-linux-x64/bin/sahyacode --version
+      
+      - name: Package
+        run: |
+          cd dist
+          tar -czf sahyacode-linux-x64.tar.gz sahyacode-linux-x64
+          ls -la *.tar.gz
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: dist/sahyacode-linux-x64.tar.gz
 
   create-release:
-    needs: [build-linux, build-macos]
+    needs: [build-macos, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,11 +98,13 @@ jobs:
       - name: List binaries
         run: ls -la binaries/
       
-      - name: Create Release
+      - name: Update Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: SahyaCode ${{ github.event.inputs.version }}
           files: binaries/**
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -36,6 +36,8 @@ import { Database } from "./storage/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
 import { ThemeCommand } from "./cli/cmd/theme"
+// import { AnalyzeCommand } from "./cli/cmd/analyze"
+// import { ObservatoryCommand } from "./cli/cmd/observatory"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -160,6 +162,8 @@ const cli = yargs(hideBin(process.argv))
   .command(PluginCommand)
   .command(DbCommand)
   .command(ThemeCommand)
+  // .command(AnalyzeCommand)
+  // .command(ObservatoryCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

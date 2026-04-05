@@ -61,7 +61,7 @@ jobs:
       - name: Build all targets
         id: build
         run: |
-          cd packages/opencode
+          cd packages/sahyacode
           bun ./script/build.ts
         env:
           SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
@@ -71,73 +71,73 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-linux-arm64
-          path: packages/opencode/dist/sahyacode-linux-arm64*
+          path: packages/sahyacode/dist/sahyacode-linux-arm64*
       
       - name: Upload Linux x64 binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-linux-x64
-          path: packages/opencode/dist/sahyacode-linux-x64*
+          path: packages/sahyacode/dist/sahyacode-linux-x64*
       
       - name: Upload Linux ARM64 musl binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-linux-arm64-musl
-          path: packages/opencode/dist/sahyacode-linux-arm64-musl*
+          path: packages/sahyacode/dist/sahyacode-linux-arm64-musl*
       
       - name: Upload Linux x64 musl binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-linux-x64-musl
-          path: packages/opencode/dist/sahyacode-linux-x64-musl*
+          path: packages/sahyacode/dist/sahyacode-linux-x64-musl*
       
       - name: Upload Linux x64 baseline binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-linux-x64-baseline
-          path: packages/opencode/dist/sahyacode-linux-x64-baseline*
+          path: packages/sahyacode/dist/sahyacode-linux-x64-baseline*
       
       - name: Upload Linux x64 musl baseline binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-linux-x64-musl-baseline
-          path: packages/opencode/dist/sahyacode-linux-x64-musl-baseline*
+          path: packages/sahyacode/dist/sahyacode-linux-x64-musl-baseline*
       
       - name: Upload macOS ARM64 binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-darwin-arm64
-          path: packages/opencode/dist/sahyacode-darwin-arm64*
+          path: packages/sahyacode/dist/sahyacode-darwin-arm64*
       
       - name: Upload macOS x64 binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-darwin-x64
-          path: packages/opencode/dist/sahyacode-darwin-x64*
+          path: packages/sahyacode/dist/sahyacode-darwin-x64*
       
       - name: Upload macOS x64 baseline binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-darwin-x64-baseline
-          path: packages/opencode/dist/sahyacode-darwin-x64-baseline*
+          path: packages/sahyacode/dist/sahyacode-darwin-x64-baseline*
       
       - name: Upload Windows x64 binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-windows-x64
-          path: packages/opencode/dist/sahyacode-windows-x64*
+          path: packages/sahyacode/dist/sahyacode-windows-x64*
       
       - name: Upload Windows ARM64 binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-windows-arm64
-          path: packages/opencode/dist/sahyacode-windows-arm64*
+          path: packages/sahyacode/dist/sahyacode-windows-arm64*
       
       - name: Upload Windows x64 baseline binary
         uses: actions/upload-artifact@v4
         with:
           name: sahyacode-windows-x64-baseline
-          path: packages/opencode/dist/sahyacode-windows-x64-baseline*
+          path: packages/sahyacode/dist/sahyacode-windows-x64-baseline*
 
   release:
     needs: [version, build-cli]

@@ -17,7 +17,7 @@ This document describes the architecture of Sahya Code, focusing on the installa
 
 Sahya Code is a terminal-based AI coding agent. The architecture consists of:
 
-- **CLI Application** (`packages/opencode/`): Main TypeScript/Bun application
+- **CLI Application** (`packages/sahyacode/`): Main TypeScript/Bun application
 - **Install Script** (`sahyagpt/install.sh`): curl-based installer hosted at sbgpt.qzz.io
 - **Version Tracking** (`version.txt`): Single source of truth for current version
 - **GitHub Releases**: Binary distribution via GitHub releases
@@ -54,7 +54,7 @@ Sahya Code is a terminal-based AI coding agent. The architecture consists of:
 | File | Purpose |
 |------|---------|
 | `version.txt` | Source of truth for current version |
-| `packages/opencode/src/installation/meta.ts` | Runtime version constants |
+| `packages/sahyacode/src/installation/meta.ts` | Runtime version constants |
 | `packages/script/src/index.ts` | Build-time version resolution |
 
 ### Version Format
@@ -192,7 +192,7 @@ Environment: OPENCODE_VERSION="2.13.4"
 The version is embedded at **compile time** via `define`:
 
 ```typescript
-// packages/opencode/script/build.ts
+// packages/sahyacode/script/build.ts
 Bun.build({
   define: {
     OPENCODE_VERSION: `'${Script.version}'`,
@@ -278,7 +278,7 @@ sahyacode upgrade
 ### Upgrade via curl (default)
 
 ```typescript
-// packages/opencode/src/installation/index.ts
+// packages/sahyacode/src/installation/index.ts
 const upgradeCurl = Effect.fnUntraced(function* (target: string) {
   // 1. Download install.sh
   const response = yield* httpOk.execute(
@@ -313,7 +313,7 @@ git commit -m "chore: bump version to v2.13.4"
 
 # 2. Build with version
 export OPENCODE_VERSION="2.13.4"
-cd packages/opencode
+cd packages/sahyacode
 bun run script/build.ts --single
 
 # 3. Package
@@ -386,10 +386,10 @@ mv "$EXTRACTED_DIR/bin/opencode" "$INSTALL_DIR/sahyacode"
 | File | Purpose |
 |------|---------|
 | `version.txt` | Current version (source of truth) |
-| `packages/opencode/src/installation/index.ts` | Installation & upgrade logic |
-| `packages/opencode/src/installation/meta.ts` | Version constants |
-| `packages/opencode/src/cli/cmd/tui/app.tsx` | Update notifications UI |
-| `packages/opencode/script/build.ts` | Build script |
+| `packages/sahyacode/src/installation/index.ts` | Installation & upgrade logic |
+| `packages/sahyacode/src/installation/meta.ts` | Version constants |
+| `packages/sahyacode/src/cli/cmd/tui/app.tsx` | Update notifications UI |
+| `packages/sahyacode/script/build.ts` | Build script |
 | `packages/script/src/index.ts` | Script utilities & version resolution |
 | `install.sh` | Local install script |
 | `sahyagpt/install.sh` | Public install script (sbgpt.qzz.io) |

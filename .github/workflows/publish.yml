@@ -57,8 +57,11 @@ jobs:
           ./script/version.ts
         env:
           GH_TOKEN: ${{ steps.committer.outputs.token }}
+          SAHYACODE_BUMP: ${{ inputs.bump }}
           OPENCODE_BUMP: ${{ inputs.bump }}
+          SAHYACODE_VERSION: ${{ inputs.version }}
           OPENCODE_VERSION: ${{ inputs.version }}
+          SAHYACODE_API_KEY: ${{ secrets.SAHYACODE_API_KEY || secrets.OPENCODE_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_REPO: ${{ (github.ref_name == 'beta' && 'anomalyco/opencode-beta') || github.repository }}
     outputs:
@@ -88,8 +91,9 @@ jobs:
       - name: Build
         id: build
         run: |
-          ./packages/opencode/script/build.ts
+          ./packages/sahyacode/script/build.ts
         env:
+          SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_RELEASE: ${{ needs.version.outputs.release }}
           GH_REPO: ${{ needs.version.outputs.repo }}
@@ -99,13 +103,13 @@ jobs:
         with:
           name: opencode-cli
           path: |
-            packages/opencode/dist/opencode-darwin*
-            packages/opencode/dist/opencode-linux*
+            packages/sahyacode/dist/opencode-darwin*
+            packages/sahyacode/dist/opencode-linux*
 
       - uses: actions/upload-artifact@v4
         with:
           name: opencode-cli-windows
-          path: packages/opencode/dist/opencode-windows*
+          path: packages/sahyacode/dist/opencode-windows*
     outputs:
       version: ${{ needs.version.outputs.version }}
 
@@ -128,7 +132,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: opencode-cli-windows
-          path: packages/opencode/dist
+          path: packages/sahyacode/dist
 
       - name: Setup git committer
         id: committer
@@ -181,7 +185,7 @@ jobs:
           }
 
       - name: Repack Windows CLI archives
-        working-directory: packages/opencode/dist
+        working-directory: packages/sahyacode/dist
         shell: pwsh
         run: |
           Compress-Archive -Path "opencode-windows-arm64\bin\*" -DestinationPath "opencode-windows-arm64.zip" -Force
@@ -205,9 +209,9 @@ jobs:
         with:
           name: opencode-cli-signed-windows
           path: |
-            packages/opencode/dist/opencode-windows-arm64
-            packages/opencode/dist/opencode-windows-x64
-            packages/opencode/dist/opencode-windows-x64-baseline
+            packages/sahyacode/dist/opencode-windows-arm64
+            packages/sahyacode/dist/opencode-windows-x64
+            packages/sahyacode/dist/opencode-windows-x64-baseline
 
   build-tauri:
     needs:
@@ -310,6 +314,7 @@ jobs:
           cd packages/desktop
           bun ./scripts/prepare.ts
         env:
+          SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           GITHUB_TOKEN: ${{ steps.committer.outputs.token }}
           OPENCODE_CLI_ARTIFACT: ${{ (runner.os == 'Windows' && 'opencode-cli-windows') || 'opencode-cli' }}
@@ -478,6 +483,7 @@ jobs:
         run: bun ./scripts/prepare.ts
         working-directory: packages/desktop-electron
         env:
+          SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_CHANNEL: ${{ (github.ref_name == 'beta' && 'beta') || 'prod' }}
           OPENCODE_CLI_ARTIFACT: ${{ (runner.os == 'Windows' && 'opencode-cli-windows') || 'opencode-cli' }}
@@ -581,17 +587,17 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: opencode-cli
-          path: packages/opencode/dist
+          path: packages/sahyacode/dist
 
       - uses: actions/download-artifact@v4
         with:
           name: opencode-cli-windows
-          path: packages/opencode/dist
+          path: packages/sahyacode/dist
 
       - uses: actions/download-artifact@v4
         with:
           name: opencode-cli-signed-windows
-          path: packages/opencode/dist
+          path: packages/sahyacode/dist
 
       - uses: actions/download-artifact@v4
         if: needs.version.outputs.release
@@ -620,6 +626,7 @@ jobs:
 
       - run: ./script/publish.ts
         env:
+          SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_RELEASE: ${{ needs.version.outputs.release }}
           AUR_KEY: ${{ secrets.AUR_KEY }}

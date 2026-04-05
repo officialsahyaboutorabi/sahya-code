@@ -7,7 +7,7 @@
   },
   "permission": {
     "edit": {
-      "packages/opencode/migration/*": "deny",
+      "packages/sahyacode/migration/*": "deny",
     },
   },
   "mcp": {},

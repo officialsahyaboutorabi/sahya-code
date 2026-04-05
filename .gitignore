@@ -29,4 +29,5 @@ UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
-packages/opencode/bin/sahyacode-darwin-arm64
+packages/sahyacode/bin/sahyacode-darwin-arm64
+packages/sahyacode/dist

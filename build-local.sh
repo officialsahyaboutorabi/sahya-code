@@ -10,7 +10,7 @@ if ! command -v bun &> /dev/null; then
     export PATH="$HOME/.bun/bin:$PATH"
 fi
 
-cd packages/opencode
+cd packages/sahyacode
 
 echo "Installing dependencies..."
 bun install

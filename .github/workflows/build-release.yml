@@ -66,6 +66,8 @@ jobs:
         env:
           SAHYACODE_VERSION: ${{ needs.version.outputs.version }}
           SAHYACODE_CHANNEL: "release"
+          SAHYACODE_RELEASE: "true"
+          GH_REPO: ${{ github.repository }}
       
       - name: Upload Linux ARM64 binary
         uses: actions/upload-artifact@v4

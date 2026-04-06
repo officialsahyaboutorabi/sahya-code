@@ -117,7 +117,13 @@ get_download_url() {
     # Binary names use 'sahyacode' prefix in the source repo
     local binary_name="sahyacode-${platform}-${arch}${suffix}"
     
-    # GitHub releases use tar.gz format
+    # Determine archive extension based on platform
+    # Darwin (macOS) uses .zip, Linux uses .tar.gz
+    local archive_ext="tar.gz"
+    if [ "$platform" = "darwin" ]; then
+        archive_ext="zip"
+    fi
+    
     if [ "$VERSION" = "latest" ]; then
         local latest_version
         latest_version=$(get_latest_version)
@@ -125,14 +131,14 @@ get_download_url() {
             echo "Error: Could not determine latest version" >&2
             exit 1
         fi
-        echo "https://github.com/${SOURCE_REPO}/releases/download/${latest_version}/${binary_name}.tar.gz"
+        echo "https://github.com/${SOURCE_REPO}/releases/download/${latest_version}/${binary_name}.${archive_ext}"
     else
         # Ensure VERSION has 'v' prefix for GitHub releases
         local version_tag="$VERSION"
         if [[ ! "$version_tag" =~ ^v ]]; then
             version_tag="v${version_tag}"
         fi
-        echo "https://github.com/${SOURCE_REPO}/releases/download/${version_tag}/${binary_name}.tar.gz"
+        echo "https://github.com/${SOURCE_REPO}/releases/download/${version_tag}/${binary_name}.${archive_ext}"
     fi
 }
 
@@ -155,8 +161,15 @@ main() {
     TEMP_DIR=$(mktemp -d)
     trap "rm -rf $TEMP_DIR" EXIT
     
+    # Determine archive extension based on platform
+    local platform=$(echo "$PLATFORM_ARCH" | cut -d- -f1)
+    local archive_ext="tar.gz"
+    if [ "$platform" = "darwin" ]; then
+        archive_ext="zip"
+    fi
+    
     # Download archive
-    local archive_path="$TEMP_DIR/${INSTALL_NAME}.tar.gz"
+    local archive_path="$TEMP_DIR/${INSTALL_NAME}.${archive_ext}"
     if command -v curl >/dev/null 2>&1; then
         curl -fsSL "$DOWNLOAD_URL" -o "$archive_path"
     elif command -v wget >/dev/null 2>&1; then
@@ -168,7 +181,11 @@ main() {
     
     # Extract archive
     echo "Extracting..."
-    tar -xzf "$archive_path" -C "$TEMP_DIR"
+    if [ "$platform" = "darwin" ]; then
+        unzip -q "$archive_path" -d "$TEMP_DIR"
+    else
+        tar -xzf "$archive_path" -C "$TEMP_DIR"
+    fi
     
     # Find the extracted directory (sahyacode-*)
     EXTRACTED_DIR=$(find "$TEMP_DIR" -maxdepth 1 -type d -name "sahyacode-*" | head -1)

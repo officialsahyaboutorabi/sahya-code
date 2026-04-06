@@ -93,10 +93,19 @@ export const UpgradeCommand = {
         // necessary because choco only allows install/upgrade in elevated terminals
         if (method === "choco" && err.stderr.includes("not running from an elevated command shell")) {
           prompts.log.error("Please run the terminal as Administrator and try again")
-        } else {
+        } else if (method === "curl" && err.stderr.includes("404")) {
+          prompts.log.error("Download failed: Binary not found for your platform")
+          prompts.log.info("Try: curl -fsSL https://sbgpt.qzz.io/install.sh | bash")
+        } else if (err.stderr) {
           prompts.log.error(err.stderr)
+        } else {
+          prompts.log.error("Unknown error during upgrade")
         }
-      } else if (err instanceof Error) prompts.log.error(err.message)
+      } else if (err instanceof Error) {
+        prompts.log.error(err.message)
+      } else {
+        prompts.log.error("An unexpected error occurred")
+      }
       prompts.outro("Done")
       return
     }

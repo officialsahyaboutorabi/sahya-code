@@ -7,6 +7,8 @@ export namespace Observatory {
     lastAction?: string
     thoughts: string[]
     enabled: boolean
+    recentFiles: string[]
+    lastFileChange?: number
   }
 
   let currentState: State = {
@@ -14,7 +16,11 @@ export namespace Observatory {
     status: "idle",
     thoughts: [],
     enabled: false,
+    recentFiles: [],
   }
+
+  // Listeners notified whenever a file is written/edited by the LLM
+  const fileChangeListeners = new Set<(file: string) => void>()
 
   export function getState(): State {
     return currentState
@@ -59,12 +65,32 @@ export namespace Observatory {
     currentState.status = status
   }
 
+  export function notifyFileChanged(file: string) {
+    if (!currentState.enabled) return
+    currentState.lastFileChange = Date.now()
+    currentState.recentFiles.unshift(file)
+    if (currentState.recentFiles.length > 10) {
+      currentState.recentFiles.pop()
+    }
+    for (const listener of fileChangeListeners) {
+      try {
+        listener(file)
+      } catch {}
+    }
+  }
+
+  export function onFileChanged(listener: (file: string) => void): () => void {
+    fileChangeListeners.add(listener)
+    return () => fileChangeListeners.delete(listener)
+  }
+
   export function clear() {
     currentState = {
       progress: 0,
       status: "idle",
       thoughts: [],
       enabled: currentState.enabled,
+      recentFiles: [],
     }
   }
 }

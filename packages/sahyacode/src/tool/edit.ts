@@ -18,6 +18,7 @@ import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { Snapshot } from "@/snapshot"
 import { assertExternalDirectory } from "./external-directory"
+import * as ObservatoryHooks from "../observatory/hooks"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 
@@ -73,6 +74,7 @@ export const EditTool = Tool.define("edit", {
         })
         await Filesystem.write(filePath, params.newString)
         await Format.file(filePath)
+        ObservatoryHooks.captureFileWrite(filePath)
         Bus.publish(File.Event.Edited, { file: filePath })
         await Bus.publish(FileWatcher.Event.Updated, {
           file: filePath,
@@ -109,6 +111,7 @@ export const EditTool = Tool.define("edit", {
 
       await Filesystem.write(filePath, contentNew)
       await Format.file(filePath)
+      ObservatoryHooks.captureFileWrite(filePath)
       Bus.publish(File.Event.Edited, { file: filePath })
       await Bus.publish(FileWatcher.Event.Updated, {
         file: filePath,

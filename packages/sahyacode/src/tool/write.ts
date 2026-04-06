@@ -13,6 +13,7 @@ import { Filesystem } from "../util/filesystem"
 import { Instance } from "../project/instance"
 import { trimDiff } from "./edit"
 import { assertExternalDirectory } from "./external-directory"
+import * as ObservatoryHooks from "../observatory/hooks"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 const MAX_PROJECT_DIAGNOSTICS_FILES = 5
@@ -44,6 +45,7 @@ export const WriteTool = Tool.define("write", {
 
     await Filesystem.write(filepath, params.content)
     await Format.file(filepath)
+    ObservatoryHooks.captureFileWrite(filepath)
     Bus.publish(File.Event.Edited, { file: filepath })
     await Bus.publish(FileWatcher.Event.Updated, {
       file: filepath,

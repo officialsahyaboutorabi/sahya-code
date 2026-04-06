@@ -5,6 +5,19 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.1] - 2026-04-06
+
+### Fixed
+
+- **Observatory live preview** - The `/observe` command now actually shows the LLM building things in real time:
+  - Added `captureFileWrite` calls to the Write and Edit tools so every file the LLM writes is tracked
+  - Added SSE (Server-Sent Events) endpoint `/observatory-events` to the preview server so the browser auto-reloads the moment a file changes — no manual refresh needed
+  - Live-reload script is injected into every HTML file served, connecting to the SSE endpoint automatically
+  - TUI now shows a "Files written by LLM" panel with the most recently created/edited files
+  - Status page (shown before `index.html` exists) lists files being written in real time and auto-reloads when `index.html` appears
+  - Observatory state now tracks `recentFiles[]` and `lastFileChange` timestamp
+  - Proper MIME types for JS, CSS, images, fonts, SVG, etc.
+
 ## [v2.14.0] - 2026-04-06
 
 ### Fixed

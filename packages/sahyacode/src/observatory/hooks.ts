@@ -34,6 +34,7 @@ export function captureFileWrite(file: string) {
   const msg = `Writing: ${file.split('/').pop() || file}`
   log.debug("Capturing file write", { file: msg })
   Observatory.addThought(msg)
+  Observatory.notifyFileChanged(file)
 }
 
 export function captureToolCall(tool: string, input?: unknown) {

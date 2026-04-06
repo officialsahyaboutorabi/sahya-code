@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, Show } from "solid-js"
+import { createSignal, onMount, onCleanup, Show, For } from "solid-js"
 import { useRoute, useRouteData } from "@tui/context/route"
 import { useTheme } from "@tui/context/theme"
 import { useTerminalDimensions, useKeyboard } from "@opentui/solid"
@@ -12,6 +12,42 @@ import path from "path"
 
 const log = Log.create({ service: "observatory.route" })
 
+// SSE client list for live reload
+const sseClients = new Set<http.ServerResponse>()
+
+function broadcastReload(file: string) {
+  const data = JSON.stringify({ type: "reload", file })
+  for (const client of sseClients) {
+    try {
+      client.write(`data: ${data}\n\n`)
+    } catch {
+      sseClients.delete(client)
+    }
+  }
+}
+
+// Injected into HTML files so the browser auto-reloads when Observatory detects a file change
+const LIVE_RELOAD_SCRIPT = `
+<script>
+(function() {
+  var src = new EventSource('/observatory-events');
+  src.onmessage = function(e) {
+    try {
+      var msg = JSON.parse(e.data);
+      if (msg.type === 'reload') {
+        console.log('[Observatory] File changed:', msg.file, '— reloading...');
+        location.reload();
+      }
+    } catch(err) {}
+  };
+  src.onerror = function() {
+    setTimeout(function() { location.reload(); }, 2000);
+  };
+  console.log('[Observatory] Live reload connected.');
+})();
+</script>
+`
+
 export function ObservatoryRoute() {
   const route = useRouteData("observatory")
   const routeCtx = useRoute()
@@ -24,6 +60,7 @@ export function ObservatoryRoute() {
   const [error, setError] = createSignal<string | null>(null)
   let interval: ReturnType<typeof setInterval> | null = null
   let server: http.Server | null = null
+  let unsubscribeFileChange: (() => void) | null = null
   let port = 3456
 
   const handleExit = () => {
@@ -40,10 +77,15 @@ export function ObservatoryRoute() {
       interval = null
     }
 
+    if (unsubscribeFileChange) {
+      unsubscribeFileChange()
+      unsubscribeFileChange = null
+    }
+
+    sseClients.clear()
     routeCtx.navigate({ type: "home" })
   }
 
-  // Enable observatory when entering
   onMount(() => {
     log.info("Observatory mounted")
     Observatory.enable()
@@ -52,29 +94,29 @@ export function ObservatoryRoute() {
       setState(Observatory.getState())
     }, 200)
 
+    // Subscribe to file changes and broadcast to SSE clients
+    unsubscribeFileChange = Observatory.onFileChanged((file) => {
+      broadcastReload(file)
+    })
+
     startServer()
   })
 
   onCleanup(() => {
     log.info("Observatory cleanup")
     Observatory.disable()
-    if (server) {
-      server.close()
-    }
-    if (interval) {
-      clearInterval(interval)
-    }
+    if (server) server.close()
+    if (interval) clearInterval(interval)
+    if (unsubscribeFileChange) unsubscribeFileChange()
+    sseClients.clear()
   })
 
-  // Handle keyboard - use the same approach as session route
   useKeyboard((evt) => {
-    // Check for 'q' key directly
     if (evt.name === "q" || evt.name === "Q") {
       log.info("Exit key pressed (q)")
       handleExit()
       return
     }
-    // Check for escape or app_exit keybind
     if (evt.name === "escape" || keybind.match("app_exit", evt)) {
       log.info("Exit key pressed (escape/app_exit)")
       handleExit()
@@ -87,68 +129,138 @@ export function ObservatoryRoute() {
 
     try {
       server = http.createServer((req, res) => {
-        if (req.url === '/observatory-status') {
+        const url = req.url || "/"
+
+        // SSE endpoint for live reload
+        if (url === "/observatory-events") {
+          res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+          })
+          res.write(": connected\n\n")
+          sseClients.add(res)
+          req.on("close", () => sseClients.delete(res))
+          return
+        }
+
+        // JSON status endpoint
+        if (url === "/observatory-status") {
           const s = Observatory.getState()
-          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.writeHead(200, { "Content-Type": "application/json" })
           res.end(JSON.stringify(s))
           return
         }
 
-        const filePath = path.join(workDir, req.url === '/' ? 'index.html' : req.url || '')
+        // Serve files from the project working directory
+        const filePath = path.join(workDir, url === "/" ? "index.html" : url)
 
         fs.readFile(filePath, (err, data) => {
           if (err) {
-            if (req.url === '/') {
-              res.writeHead(200, { 'Content-Type': 'text/html' })
-              res.end(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <title>Observatory Preview</title>
-                  <style>
-                    body { font-family: sans-serif; background: #1a1a1a; color: #fff; padding: 40px; }
-                    h1 { color: #ff4f00; }
-                    .status { padding: 20px; background: #2a2a2a; border-radius: 8px; margin: 20px 0; }
-                  </style>
-                </head>
-                <body>
-                  <h1>🔭 Observatory Preview</h1>
-                  <div class="status">
-                    <p>Working directory: ${workDir}</p>
-                    <p>Status: Observatory is monitoring the agent...</p>
-                    <p id="activity">Waiting for activity...</p>
-                  </div>
-                  <script>
-                    setInterval(async () => {
-                      try {
-                        const res = await fetch('/observatory-status');
-                        const data = await res.json();
-                        document.getElementById('activity').textContent =
-                          'Current: ' + (data.currentTask || 'Idle') +
-                          ' | Progress: ' + data.progress + '%';
-                      } catch(e) {}
-                    }, 1000);
-                  </script>
-                </body>
-                </html>
-              `)
+            if (url === "/" || url === "/index.html") {
+              // No index.html yet — show a status page with live reload
+              const s = Observatory.getState()
+              const fileList = s.recentFiles.length > 0
+                ? s.recentFiles.map(f => `<li>${path.relative(workDir, f)}</li>`).join("")
+                : "<li>No files written yet...</li>"
+              res.writeHead(200, { "Content-Type": "text/html" })
+              res.end(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Observatory — Live Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 32px; max-width: 600px; width: 100%; }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; }
+    .accent { color: #ff6b2b; }
+    .status { display: flex; align-items: center; gap: 8px; margin: 16px 0; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #3fb950; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .section { margin-top: 20px; }
+    .section h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #8b949e; margin-bottom: 8px; }
+    ul { list-style: none; }
+    ul li { padding: 4px 0; font-size: 0.9rem; color: #8b949e; border-bottom: 1px solid #21262d; }
+    ul li:last-child { border-bottom: none; }
+    .task { background: #1f2937; border-left: 3px solid #ff6b2b; padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; margin-top: 8px; }
+    .hint { color: #8b949e; font-size: 0.8rem; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔭 <span class="accent">Observatory</span> — Live Preview</h1>
+    <div class="status">
+      <div class="dot"></div>
+      <span>Waiting for the LLM to write files...</span>
+    </div>
+    <div class="section">
+      <h2>Working directory</h2>
+      <div class="task">${workDir}</div>
+    </div>
+    <div class="section">
+      <h2>Recent files written</h2>
+      <ul id="files">${fileList}</ul>
+    </div>
+    <p class="hint">This page will automatically reload when the LLM writes an <code>index.html</code>.</p>
+  </div>
+  ${LIVE_RELOAD_SCRIPT}
+  <script>
+    // Also poll status and update file list
+    setInterval(async () => {
+      try {
+        const r = await fetch('/observatory-status');
+        const d = await r.json();
+        const ul = document.getElementById('files');
+        if (ul && d.recentFiles && d.recentFiles.length > 0) {
+          ul.innerHTML = d.recentFiles.map(f => '<li>' + f.split('/').pop() + '</li>').join('');
+        }
+      } catch(e) {}
+    }, 1000);
+  </script>
+</body>
+</html>`)
               return
             }
             res.writeHead(404)
-            res.end('Not found')
+            res.end("Not found")
             return
           }
 
-          const ext = path.extname(filePath)
-          const contentType = {
-            '.html': 'text/html',
-            '.js': 'application/javascript',
-            '.css': 'text/css',
-            '.json': 'application/json',
-          }[ext] || 'text/plain'
+          const ext = path.extname(filePath).toLowerCase()
+          const contentTypes: Record<string, string> = {
+            ".html": "text/html",
+            ".htm": "text/html",
+            ".js": "application/javascript",
+            ".mjs": "application/javascript",
+            ".css": "text/css",
+            ".json": "application/json",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".svg": "image/svg+xml",
+            ".ico": "image/x-icon",
+            ".woff": "font/woff",
+            ".woff2": "font/woff2",
+          }
+          const contentType = contentTypes[ext] || "text/plain"
 
-          res.writeHead(200, { 'Content-Type': contentType })
-          res.end(data)
+          res.writeHead(200, { "Content-Type": contentType })
+
+          // Inject live-reload script into HTML responses
+          if (ext === ".html" || ext === ".htm") {
+            let html = data.toString("utf8")
+            if (html.includes("</body>")) {
+              html = html.replace("</body>", `${LIVE_RELOAD_SCRIPT}</body>`)
+            } else {
+              html += LIVE_RELOAD_SCRIPT
+            }
+            res.end(html)
+          } else {
+            res.end(data)
+          }
         })
       })
 
@@ -157,29 +269,27 @@ export function ObservatoryRoute() {
         setBrowserUrl(`http://localhost:${port}`)
       })
 
-      server.on('error', (err: any) => {
-        if (err.code === 'EADDRINUSE') {
+      server.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code === "EADDRINUSE") {
           port++
           server?.listen(port)
         } else {
-          log.error('Server error', { err })
-          setError(`Server error: ${err.message}`)
+          log.error("Server error", { err })
+          setError(`Server error: ${(err as Error).message}`)
         }
       })
     } catch (err) {
-      log.error('Failed to start server', { err })
+      log.error("Failed to start server", { err })
       setError(`Failed to start server: ${err}`)
     }
   }
-
-  const currentState = state()
 
   return (
     <box flexDirection="column" width="100%" height="100%" padding={1}>
       {/* Header */}
       <box flexDirection="row" marginBottom={1}>
         <text fg={theme.accent}>
-          <b>🔭 Observatory</b>
+          <b>🔭 Observatory — Live Preview</b>
         </text>
         <box flexGrow={1} />
         <text fg={theme.textMuted}>
@@ -202,64 +312,62 @@ export function ObservatoryRoute() {
         borderStyle="rounded"
       >
         <text>Status: </text>
-        <text fg={currentState.status === "running" ? theme.success : theme.text}>
-          {currentState.status.toUpperCase()}
+        <text fg={state().status === "running" ? theme.success : theme.text}>
+          {state().status.toUpperCase()}
         </text>
         <box flexGrow={1} />
-        <text>Progress: {currentState.progress}%</text>
+        <text>Files written: {state().recentFiles.length}</text>
       </box>
 
       {/* Current Task */}
-      <Show when={currentState.currentTask}>
+      <Show when={state().currentTask}>
         <box flexDirection="column" marginBottom={1} borderStyle="rounded" padding={1}>
-          <text fg={theme.accent}><b>Current Task:</b></text>
-          <text>{currentState.currentTask}</text>
+          <text fg={theme.accent}><b>Current task:</b></text>
+          <text>{state().currentTask}</text>
         </box>
       </Show>
 
-      {/* Progress Bar */}
-      <box flexDirection="row" marginBottom={1} height={1}>
-        <box
-          width={`${Math.max(1, currentState.progress)}%`}
-          height={1}
-          backgroundColor={theme.accent}
-        />
-        <box
-          width={`${Math.max(1, 100 - currentState.progress)}%`}
-          height={1}
-          backgroundColor={theme.backgroundPanel}
-        />
+      {/* Recent Files Written */}
+      <box flexDirection="column" marginBottom={1} borderStyle="rounded" padding={1} flexGrow={1}>
+        <text marginBottom={1}><b>Files written by LLM ({state().recentFiles.length}):</b></text>
+        <Show
+          when={state().recentFiles.length > 0}
+          fallback={<text fg={theme.textMuted}>No files written yet. Agent will appear here when it starts building.</text>}
+        >
+          <For each={state().recentFiles.slice(0, 8)}>
+            {(file, i) => (
+              <text fg={i() === 0 ? theme.success : theme.textMuted}>
+                {i() === 0 ? "▶ " : "  "}{file.split("/").pop() || file}
+              </text>
+            )}
+          </For>
+        </Show>
       </box>
 
-      {/* Recent Thoughts */}
-      <box flexDirection="column" flexGrow={1} borderStyle="rounded" padding={1}>
-        <text marginBottom={1}><b>Recent Activity ({currentState.thoughts.length}):</b></text>
+      {/* Recent Activity */}
+      <box flexDirection="column" marginBottom={1} borderStyle="rounded" padding={1}>
+        <text marginBottom={1}><b>Recent activity ({state().thoughts.length}):</b></text>
         <Show
-          when={currentState.thoughts.length > 0}
-          fallback={<text fg={theme.textMuted}>No activity yet... Agent will appear here when it starts working.</text>}
+          when={state().thoughts.length > 0}
+          fallback={<text fg={theme.textMuted}>No activity yet...</text>}
         >
-          {currentState.thoughts.slice(0, 10).map((thought, i) => (
-            <text fg={i === 0 ? theme.text : theme.textMuted}>
-              • {thought.length > 60 ? thought.substring(0, 60) + "..." : thought}
-            </text>
-          ))}
+          <For each={state().thoughts.slice(0, 5)}>
+            {(thought, i) => (
+              <text fg={i() === 0 ? theme.text : theme.textMuted}>
+                • {thought.length > 70 ? thought.substring(0, 70) + "..." : thought}
+              </text>
+            )}
+          </For>
         </Show>
       </box>
 
       {/* Browser Preview URL */}
       <Show when={browserUrl()}>
         <box flexDirection="row" marginTop={1} padding={1} borderStyle="rounded">
-          <text>Browser Preview: </text>
+          <text>Browser preview (live reload): </text>
           <text fg={theme.accent}>{browserUrl()}</text>
           <box flexGrow={1} />
-          <text fg={theme.textMuted}>(Open in browser)</text>
-        </box>
-      </Show>
-
-      {/* Last Action */}
-      <Show when={currentState.lastAction}>
-        <box flexDirection="row" marginTop={1}>
-          <text fg={theme.textMuted}>Last: {currentState.lastAction}</text>
+          <text fg={theme.textMuted}>(auto-refreshes on file change)</text>
         </box>
       </Show>
     </box>

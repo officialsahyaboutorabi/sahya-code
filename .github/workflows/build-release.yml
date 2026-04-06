@@ -97,9 +97,10 @@ jobs:
       
       - name: Install dependencies
         run: |
-          # Remove packageManager field temporarily to allow pnpm
-          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
-          pnpm install --no-frozen-lockfile
+          # Also need to replace workspace: references with * since we're only building one package
+          find packages/sahyacode -name "package.json" -exec sed -i 's/workspace:\*/\*/g' {} \;
+          # Use bun install since we've replaced all catalog entries
+          bun install --no-save
       
       - name: Build macOS ARM64 binary
         run: |
@@ -210,9 +211,10 @@ jobs:
       
       - name: Install dependencies
         run: |
-          # Remove packageManager field temporarily to allow pnpm
-          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
-          pnpm install --no-frozen-lockfile
+          # Also need to replace workspace: references with * since we're only building one package
+          find packages/sahyacode -name "package.json" -exec sed -i 's/workspace:\*/\*/g' {} \;
+          # Use bun install since we've replaced all catalog entries
+          bun install --no-save
       
       - name: Build Linux x64 binary
         run: |
@@ -323,9 +325,10 @@ jobs:
       
       - name: Install dependencies
         run: |
-          # Remove packageManager field temporarily to allow pnpm
-          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
-          pnpm install --no-frozen-lockfile
+          # Also need to replace workspace: references with * since we're only building one package
+          find packages/sahyacode -name "package.json" -exec sed -i 's/workspace:\*/\*/g' {} \;
+          # Use bun install since we've replaced all catalog entries
+          bun install --no-save
       
       - name: Build Linux ARM64 binary
         run: |
@@ -436,9 +439,10 @@ jobs:
       
       - name: Install dependencies
         run: |
-          # Remove packageManager field temporarily to allow pnpm
-          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
-          pnpm install --no-frozen-lockfile
+          # Also need to replace workspace: references with * since we're only building one package
+          find packages/sahyacode -name "package.json" -exec sed -i 's/workspace:\*/\*/g' {} \;
+          # Use bun install since we've replaced all catalog entries
+          bun install --no-save
       
       - name: Build Windows x64 binary
         shell: pwsh

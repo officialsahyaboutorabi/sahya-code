@@ -1,6 +1,7 @@
-import { Effect, Layer, ServiceMap } from "effect"
+import { Effect, Layer, Scope, ServiceMap } from "effect"
 import { InstanceState } from "@/effect/instance-state"
 import { makeRuntime } from "@/effect/run-service"
+import type { InstanceContext } from "@/project/instance"
 import { Bus } from "@/bus"
 import { BusEvent } from "@/bus/bus-event"
 import { Log } from "../util/log"
@@ -79,13 +80,13 @@ export namespace CodeIntelligence {
       )
 
       const state = yield* InstanceState.make<State>(
-        Effect.fn("CodeIntelligence.state")(function* (ctx) {
+        (Effect.fn("CodeIntelligence.state")(function* (ctx) {
           log.info("initializing code intelligence", { directory: ctx.directory })
 
-          const parser = yield* ParserImpl.create()
-          const graph = yield* DependencyGraphImpl.create()
-          const search = yield* SearchIndexImpl.create()
-          const metrics = yield* CodeMetricsImpl.create()
+          const parser = yield* ParserImpl.create
+          const graph = yield* DependencyGraphImpl.create
+          const search = yield* SearchIndexImpl.create
+          const metrics = yield* CodeMetricsImpl.create
 
           const s: State = {
             parser,
@@ -99,24 +100,24 @@ export namespace CodeIntelligence {
           Bus.subscribe(FileWatcher.Event.Updated, (event) => {
             Effect.runFork(
               Effect.gen(function* () {
-                const supported = parser.isSupported(event.file)
+                const supported = parser.isSupported(event.properties.file)
                 if (!supported) return
 
-                if (event.event === "unlink") {
-                  yield* graph.removeFile(event.file)
-                  yield* search.removeFile(event.file)
+                if (event.properties.event === "unlink") {
+                  yield* graph.removeFile(event.properties.file)
+                  yield* search.removeFile(event.properties.file)
                 } else {
-                  yield* indexFileImpl(s, event.file, bus)
+                  yield* indexFileImpl(s, event.properties.file, bus)
                 }
               }).pipe(
-                Effect.tapError((err) => Effect.sync(() => log.error("failed to handle file change", { file: event.file, err }))),
+                Effect.tapError((err) => Effect.sync(() => log.error("failed to handle file change", { file: event.properties.file, err }))),
                 Effect.ignore,
-              ),
+              ) as Effect.Effect<void, never, never>,
             )
           })
 
           return s
-        }),
+        })) as (ctx: InstanceContext) => Effect.Effect<State, never, Scope.Scope>,
       )
 
       const isSupported = Effect.fn("CodeIntelligence.isSupported")(function* (file: string) {

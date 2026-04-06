@@ -16,10 +16,9 @@ export function ObservatoryRoute() {
   const route = useRouteData("observatory")
   const routeCtx = useRoute()
   const { theme } = useTheme()
-  const keyboard = useKeyboard()
   const keybind = useKeybind()
   const dimensions = useTerminalDimensions()
-  
+
   const [state, setState] = createSignal(Observatory.getState())
   const [browserUrl, setBrowserUrl] = createSignal<string | null>(null)
   const [error, setError] = createSignal<string | null>(null)
@@ -30,17 +29,17 @@ export function ObservatoryRoute() {
   const handleExit = () => {
     log.info("Exiting observatory")
     Observatory.disable()
-    
+
     if (server) {
       server.close()
       server = null
     }
-    
+
     if (interval) {
       clearInterval(interval)
       interval = null
     }
-    
+
     routeCtx.navigate({ type: "home" })
   }
 
@@ -48,7 +47,7 @@ export function ObservatoryRoute() {
   onMount(() => {
     log.info("Observatory mounted")
     Observatory.enable()
-    
+
     interval = setInterval(() => {
       setState(Observatory.getState())
     }, 200)
@@ -81,11 +80,11 @@ export function ObservatoryRoute() {
       handleExit()
       return
     }
-  })
+  }, {})
 
   const startServer = async () => {
     const workDir = Instance.worktree || process.cwd()
-    
+
     try {
       server = http.createServer((req, res) => {
         if (req.url === '/observatory-status') {
@@ -96,7 +95,7 @@ export function ObservatoryRoute() {
         }
 
         const filePath = path.join(workDir, req.url === '/' ? 'index.html' : req.url || '')
-        
+
         fs.readFile(filePath, (err, data) => {
           if (err) {
             if (req.url === '/') {
@@ -124,8 +123,8 @@ export function ObservatoryRoute() {
                       try {
                         const res = await fetch('/observatory-status');
                         const data = await res.json();
-                        document.getElementById('activity').textContent = 
-                          'Current: ' + (data.currentTask || 'Idle') + 
+                        document.getElementById('activity').textContent =
+                          'Current: ' + (data.currentTask || 'Idle') +
                           ' | Progress: ' + data.progress + '%';
                       } catch(e) {}
                     }, 1000);
@@ -139,7 +138,7 @@ export function ObservatoryRoute() {
             res.end('Not found')
             return
           }
-          
+
           const ext = path.extname(filePath)
           const contentType = {
             '.html': 'text/html',
@@ -147,7 +146,7 @@ export function ObservatoryRoute() {
             '.css': 'text/css',
             '.json': 'application/json',
           }[ext] || 'text/plain'
-          
+
           res.writeHead(200, { 'Content-Type': contentType })
           res.end(data)
         })
@@ -179,31 +178,31 @@ export function ObservatoryRoute() {
     <box flexDirection="column" width="100%" height="100%" padding={1}>
       {/* Header */}
       <box flexDirection="row" marginBottom={1}>
-        <text bold color={theme().accent}>
-          🔭 Observatory
+        <text fg={theme.accent}>
+          <b>🔭 Observatory</b>
         </text>
         <box flexGrow={1} />
-        <text color={theme().textMuted}>
+        <text fg={theme.textMuted}>
           Press 'q' or Esc to exit
         </text>
       </box>
 
       <Show when={error()}>
-        <box backgroundColor={theme().error} padding={1} marginBottom={1}>
-          <text color="#fff">Error: {error()}</text>
+        <box backgroundColor={theme.error} padding={1} marginBottom={1}>
+          <text fg="#fff">Error: {error()}</text>
         </box>
       </Show>
 
       {/* Status Bar */}
-      <box 
-        flexDirection="row" 
-        backgroundColor={theme().bgSecondary}
+      <box
+        flexDirection="row"
+        backgroundColor={theme.backgroundPanel}
         padding={1}
         marginBottom={1}
-        borderStyle="round"
+        borderStyle="rounded"
       >
         <text>Status: </text>
-        <text color={currentState.status === "running" ? theme().success : theme().text}>
+        <text fg={currentState.status === "running" ? theme.success : theme.text}>
           {currentState.status.toUpperCase()}
         </text>
         <box flexGrow={1} />
@@ -212,35 +211,35 @@ export function ObservatoryRoute() {
 
       {/* Current Task */}
       <Show when={currentState.currentTask}>
-        <box flexDirection="column" marginBottom={1} borderStyle="round" padding={1}>
-          <text bold color={theme().accent}>Current Task:</text>
+        <box flexDirection="column" marginBottom={1} borderStyle="rounded" padding={1}>
+          <text fg={theme.accent}><b>Current Task:</b></text>
           <text>{currentState.currentTask}</text>
         </box>
       </Show>
 
       {/* Progress Bar */}
       <box flexDirection="row" marginBottom={1} height={1}>
-        <box 
-          width={`${Math.max(1, currentState.progress)}%`} 
+        <box
+          width={`${Math.max(1, currentState.progress)}%`}
           height={1}
-          backgroundColor={theme().accent}
+          backgroundColor={theme.accent}
         />
-        <box 
-          width={`${Math.max(1, 100 - currentState.progress)}%`} 
+        <box
+          width={`${Math.max(1, 100 - currentState.progress)}%`}
           height={1}
-          backgroundColor={theme().bgSecondary}
+          backgroundColor={theme.backgroundPanel}
         />
       </box>
 
       {/* Recent Thoughts */}
-      <box flexDirection="column" flexGrow={1} borderStyle="round" padding={1}>
-        <text bold marginBottom={1}>Recent Activity ({currentState.thoughts.length}):</text>
-        <Show 
+      <box flexDirection="column" flexGrow={1} borderStyle="rounded" padding={1}>
+        <text marginBottom={1}><b>Recent Activity ({currentState.thoughts.length}):</b></text>
+        <Show
           when={currentState.thoughts.length > 0}
-          fallback={<text color={theme().textMuted}>No activity yet... Agent will appear here when it starts working.</text>}
+          fallback={<text fg={theme.textMuted}>No activity yet... Agent will appear here when it starts working.</text>}
         >
           {currentState.thoughts.slice(0, 10).map((thought, i) => (
-            <text key={i} color={i === 0 ? theme().text : theme().textMuted}>
+            <text fg={i === 0 ? theme.text : theme.textMuted}>
               • {thought.length > 60 ? thought.substring(0, 60) + "..." : thought}
             </text>
           ))}
@@ -249,18 +248,18 @@ export function ObservatoryRoute() {
 
       {/* Browser Preview URL */}
       <Show when={browserUrl()}>
-        <box flexDirection="row" marginTop={1} padding={1} borderStyle="round">
+        <box flexDirection="row" marginTop={1} padding={1} borderStyle="rounded">
           <text>Browser Preview: </text>
-          <text color={theme().accent}>{browserUrl()}</text>
+          <text fg={theme.accent}>{browserUrl()}</text>
           <box flexGrow={1} />
-          <text color={theme().textMuted}>(Open in browser)</text>
+          <text fg={theme.textMuted}>(Open in browser)</text>
         </box>
       </Show>
 
       {/* Last Action */}
       <Show when={currentState.lastAction}>
         <box flexDirection="row" marginTop={1}>
-          <text color={theme().textMuted}>Last: {currentState.lastAction}</text>
+          <text fg={theme.textMuted}>Last: {currentState.lastAction}</text>
         </box>
       </Show>
     </box>

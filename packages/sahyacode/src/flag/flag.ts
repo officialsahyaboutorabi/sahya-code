@@ -85,6 +85,10 @@ export namespace Flag {
     const parsed = Number(value)
     return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
   }
+
+  export declare const SAHYACODE_DISABLE_PROJECT_CONFIG: boolean
+  export declare const SAHYACODE_CONFIG_DIR: string | undefined
+  export declare const SAHYACODE_SERVER_USERNAME: string | undefined
 }
 
 // Dynamic getter for OPENCODE_DISABLE_PROJECT_CONFIG
@@ -165,6 +169,14 @@ Object.defineProperty(Flag, "SAHYACODE_DISABLE_PROJECT_CONFIG", {
 Object.defineProperty(Flag, "SAHYACODE_CONFIG_DIR", {
   get() {
     return process.env["SAHYACODE_CONFIG_DIR"] || process.env["OPENCODE_CONFIG_DIR"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "SAHYACODE_SERVER_USERNAME", {
+  get() {
+    return process.env["SAHYACODE_SERVER_USERNAME"] || process.env["OPENCODE_SERVER_USERNAME"]
   },
   enumerable: true,
   configurable: false,

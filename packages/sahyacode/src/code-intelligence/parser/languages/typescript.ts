@@ -1,4 +1,4 @@
-import Parser from "web-tree-sitter"
+import * as Parser from "web-tree-sitter"
 import path from "path"
 import { Effect } from "effect"
 import { Filesystem } from "../../../util/filesystem"
@@ -109,7 +109,7 @@ export namespace TypeScriptParser {
         if (!node) return undefined
 
         // Find the closest symbol that contains this position
-        let current: Parser.SyntaxNode | null = node
+        let current: Parser.Node | null = node
         while (current) {
           const symbol = parsed.symbols.find(
             (s) =>
@@ -158,7 +158,7 @@ export namespace TypeScriptParser {
     }
   })
 
-  function extractSymbols(root: Parser.SyntaxNode, file: string, source: string): ParserTypes.Symbol[] {
+  function extractSymbols(root: Parser.Node, file: string, source: string): ParserTypes.Symbol[] {
     const symbols: ParserTypes.Symbol[] = []
 
     const functionNodes = [
@@ -264,7 +264,7 @@ export namespace TypeScriptParser {
     return symbols
   }
 
-  function extractImports(root: Parser.SyntaxNode, file: string, source: string): ParserTypes.Import[] {
+  function extractImports(root: Parser.Node, file: string, source: string): ParserTypes.Import[] {
     const imports: ParserTypes.Import[] = []
     const importNodes = TreeSitter.findDescendants(root, "import_statement")
 
@@ -320,7 +320,7 @@ export namespace TypeScriptParser {
     return imports
   }
 
-  function extractExports(root: Parser.SyntaxNode, file: string, source: string): ParserTypes.Export[] {
+  function extractExports(root: Parser.Node, file: string, source: string): ParserTypes.Export[] {
     const exports: ParserTypes.Export[] = []
     const exportNodes = TreeSitter.findDescendants(root, "export_statement")
 
@@ -358,7 +358,7 @@ export namespace TypeScriptParser {
     return exports
   }
 
-  function extractCalls(root: Parser.SyntaxNode, file: string, source: string): ParserTypes.Call[] {
+  function extractCalls(root: Parser.Node, file: string, source: string): ParserTypes.Call[] {
     const calls: ParserTypes.Call[] = []
     const callNodes = TreeSitter.findDescendants(root, "call_expression")
 
@@ -382,7 +382,7 @@ export namespace TypeScriptParser {
     return calls
   }
 
-  function extractSignature(node: Parser.SyntaxNode, source: string): string | undefined {
+  function extractSignature(node: Parser.Node, source: string): string | undefined {
     const params = node.childForFieldName("parameters")
     if (!params) return undefined
 

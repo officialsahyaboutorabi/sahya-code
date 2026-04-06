@@ -98,6 +98,7 @@ function routeCurrent(route: ReturnType<typeof useRoute>): TuiPluginApi["route"]
       },
     }
   }
+  if (route.data.type === "observatory") return { name: "observatory" }
 
   return {
     name: route.data.id,

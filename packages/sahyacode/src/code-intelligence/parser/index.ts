@@ -89,8 +89,8 @@ export namespace Parser {
 
 export namespace ParserImpl {
   export const create = Effect.gen(function* () {
-    const [{ TypeScriptParser }] = yield* Effect.promise(() => import("./languages/typescript"))
-    const parsers: Parser.Interface[] = [yield* TypeScriptParser.create()]
+    const { TypeScriptParser } = yield* Effect.promise(() => import("./languages/typescript"))
+    const parsers: Parser.Interface[] = [yield* TypeScriptParser.create]
 
     const findParser = (file: string): Parser.Interface | undefined => {
       return parsers.find((p) => p.isSupported(file))

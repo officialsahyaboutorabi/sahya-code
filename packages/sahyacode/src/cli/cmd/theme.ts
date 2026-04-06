@@ -6,7 +6,7 @@ import { Global } from "../../global"
 import { Filesystem } from "../../util/filesystem"
 import path from "path"
 import os from "os"
-import { mkdir } from "fs/promises"
+import { mkdir, readdir } from "fs/promises"
 import type { ThemeJson } from "../cmd/tui/context/theme"
 import { DEFAULT_THEMES, resolveTheme } from "../cmd/tui/context/theme"
 import { RGBA } from "@opentui/core"
@@ -124,7 +124,7 @@ function generateTheme(name: string, colors: Record<string, ColorValue>): ThemeJ
   return {
     $schema: "https://opencode.ai/theme.json",
     defs,
-    theme: theme as ThemeJson["theme"],
+    theme: theme as unknown as ThemeJson["theme"],
   }
 }
 
@@ -221,7 +221,7 @@ async function listCustomThemes(): Promise<Record<string, ThemeJson>> {
   for (const dir of dirs) {
     if (!(await Filesystem.exists(dir))) continue
     
-    const files = await Filesystem.readdir(dir).catch(() => [])
+    const files = await readdir(dir).catch(() => [])
     for (const file of files) {
       if (!file.endsWith(".json")) continue
       
@@ -587,7 +587,7 @@ async function editTheme() {
         options: [...CORE_COLORS, ...EXTENDED_COLORS].map((c) => ({
           label: `${c.label} - ${c.description}`,
           value: c,
-        })),
+        })) as any,
         required: false,
       })
   
@@ -596,8 +596,8 @@ async function editTheme() {
     return
   }
   
-  const colors = Array.isArray(colorsToEdit) ? colorsToEdit : [...CORE_COLORS, ...EXTENDED_COLORS]
-  
+  const colors: Array<{ key: string; label: string; description: string }> = Array.isArray(colorsToEdit) ? colorsToEdit as any : [...CORE_COLORS, ...EXTENDED_COLORS]
+
   for (const colorInfo of colors) {
     const defaults = currentColors[colorInfo.key]
     const result = await promptColor(colorInfo, defaults)

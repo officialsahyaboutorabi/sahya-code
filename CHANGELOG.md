@@ -5,6 +5,24 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.0] - 2026-04-06
+
+### Fixed
+
+- **TypeScript errors** - Fixed all type errors across the sahyacode package (13 packages, 0 errors):
+  - `flag.ts` - Added missing declarations for `SAHYACODE_DISABLE_PROJECT_CONFIG`, `SAHYACODE_CONFIG_DIR`, and `SAHYACODE_SERVER_USERNAME`
+  - `theme.ts` - Fixed type cast, missing `readdir` import, multiselect options type, and unknown `colorInfo` type
+  - `observatory.tsx` - Removed imports of non-existent observatory modules
+  - `tui/routes/observatory/index.tsx` - Fixed `useKeyboard` signature, `theme` proxy usage, `TextProps` props (`fg` vs `color`, `<b>` for bold), `borderStyle="rounded"`, and `theme.backgroundPanel` vs `bgSecondary`
+  - `tui/plugin/api.tsx` - Added guard for `ObservatoryRoute` before accessing `id`/`data` properties
+  - `plugin/install.ts` - Added `"sahyacode"` to the `PatchDeps.files` name union type
+  - `tool/read.ts` - Restored missing `instructions` variable declaration
+  - `code-intelligence/index.ts` - Fixed `event.properties.*` access, `create` as Effect values, `InstanceState.make` type cast
+  - `code-intelligence/parser/index.ts` - Fixed module destructuring and `create` Effect value usage
+  - `code-intelligence/parser/tree-sitter.ts` - Fixed `web-tree-sitter` namespace import and `Parser.Node` vs `SyntaxNode`
+  - `code-intelligence/parser/languages/typescript.ts` - Fixed default import and `Parser.Node` usage
+  - `tsconfig.json` - Excluded `src/observatory.bak` from compilation
+
 ## [v2.13.7] - 2026-04-05
 
 ### Fixed

@@ -1,4 +1,4 @@
-import * as Parser from "web-tree-sitter"
+import * as TreeSitterModule from "web-tree-sitter"
 import path from "path"
 import { Log } from "../../util/log"
 
@@ -14,7 +14,7 @@ export namespace TreeSitter {
 
     initPromise = (async () => {
       try {
-        await Parser.init()
+        await TreeSitterModule.Parser.init()
         initialized = true
         log.info("tree-sitter initialized")
       } catch (error) {
@@ -26,13 +26,13 @@ export namespace TreeSitter {
     return initPromise
   }
 
-  export async function loadLanguage(name: string): Promise<Parser.Language | undefined> {
+  export async function loadLanguage(name: string): Promise<TreeSitterModule.Language | undefined> {
     await initialize()
 
     try {
       // Try to load from node_modules
       const langPath = require.resolve(`tree-sitter-${name}`)
-      const lang = await Parser.Language.load(langPath)
+      const lang = await TreeSitterModule.Language.load(langPath)
       return lang
     } catch (error) {
       log.warn(`failed to load language ${name}`, { error })
@@ -40,25 +40,25 @@ export namespace TreeSitter {
     }
   }
 
-  export function createParser(language: Parser.Language): Parser {
-    const parser = new Parser()
+  export function createParser(language: TreeSitterModule.Language): TreeSitterModule.Parser {
+    const parser = new TreeSitterModule.Parser()
     parser.setLanguage(language)
     return parser
   }
 
-  export function getNodeText(node: Parser.SyntaxNode, source: string): string {
+  export function getNodeText(node: TreeSitterModule.Node, source: string): string {
     return source.slice(node.startIndex, node.endIndex)
   }
 
-  export function nodeToRange(node: Parser.SyntaxNode): { start: { line: number; column: number }; end: { line: number; column: number } } {
+  export function nodeToRange(node: TreeSitterModule.Node): { start: { line: number; column: number }; end: { line: number; column: number } } {
     return {
       start: { line: node.startPosition.row, column: node.startPosition.column },
       end: { line: node.endPosition.row, column: node.endPosition.column },
     }
   }
 
-  export function findChildren(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode[] {
-    const results: Parser.SyntaxNode[] = []
+  export function findChildren(node: TreeSitterModule.Node, type: string): TreeSitterModule.Node[] {
+    const results: TreeSitterModule.Node[] = []
     for (let i = 0; i < node.childCount; i++) {
       const child = node.child(i)
       if (child && child.type === type) {
@@ -68,9 +68,9 @@ export namespace TreeSitter {
     return results
   }
 
-  export function findDescendants(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode[] {
-    const results: Parser.SyntaxNode[] = []
-    function traverse(n: Parser.SyntaxNode) {
+  export function findDescendants(node: TreeSitterModule.Node, type: string): TreeSitterModule.Node[] {
+    const results: TreeSitterModule.Node[] = []
+    function traverse(n: TreeSitterModule.Node) {
       if (n.type === type) {
         results.push(n)
       }
@@ -83,8 +83,8 @@ export namespace TreeSitter {
     return results
   }
 
-  export function findFirstDescendant(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode | undefined {
-    function traverse(n: Parser.SyntaxNode): Parser.SyntaxNode | undefined {
+  export function findFirstDescendant(node: TreeSitterModule.Node, type: string): TreeSitterModule.Node | undefined {
+    function traverse(n: TreeSitterModule.Node): TreeSitterModule.Node | undefined {
       if (n.type === type) {
         return n
       }

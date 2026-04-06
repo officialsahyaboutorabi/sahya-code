@@ -1,14 +1,18 @@
-import { createSignal, onMount, onCleanup, Show, For } from "solid-js"
+import { createSignal, onMount, onCleanup, Show, For, createMemo } from "solid-js"
 import { useRoute, useRouteData } from "@tui/context/route"
 import { useTheme } from "@tui/context/theme"
 import { useTerminalDimensions, useKeyboard } from "@opentui/solid"
 import { useKeybind } from "@tui/context/keybind"
+import { useSync } from "@tui/context/sync"
 import { Observatory } from "@/observatory"
 import { Log } from "@/util/log"
 import { Instance } from "@/project/instance"
+import { Prompt } from "@tui/component/prompt"
+import type { PromptRef } from "@tui/component/prompt"
 import http from "http"
 import fs from "fs"
 import path from "path"
+import type { Message, Part } from "@opencode-ai/sdk/v2"
 
 const log = Log.create({ service: "observatory.route" })
 
@@ -26,7 +30,6 @@ function broadcastReload(file: string) {
   }
 }
 
-// Injected into HTML files so the browser auto-reloads when Observatory detects a file change
 const LIVE_RELOAD_SCRIPT = `
 <script>
 (function() {
@@ -34,19 +37,15 @@ const LIVE_RELOAD_SCRIPT = `
   src.onmessage = function(e) {
     try {
       var msg = JSON.parse(e.data);
-      if (msg.type === 'reload') {
-        console.log('[Observatory] File changed:', msg.file, '— reloading...');
-        location.reload();
-      }
+      if (msg.type === 'reload') { location.reload(); }
     } catch(err) {}
   };
-  src.onerror = function() {
-    setTimeout(function() { location.reload(); }, 2000);
-  };
-  console.log('[Observatory] Live reload connected.');
+  src.onerror = function() { setTimeout(function() { location.reload(); }, 2000); };
 })();
 </script>
 `
+
+const CHAT_SIDEBAR_WIDTH = 44
 
 export function ObservatoryRoute() {
   const route = useRouteData("observatory")
@@ -54,56 +53,67 @@ export function ObservatoryRoute() {
   const { theme } = useTheme()
   const keybind = useKeybind()
   const dimensions = useTerminalDimensions()
+  const sync = useSync()
 
-  const [state, setState] = createSignal(Observatory.getState())
+  // Resolve sessionID: from route, or fall back to the most recently active session
+  const sessionID = createMemo(() => {
+    if (route.sessionID) return route.sessionID
+    const sessions = sync.data.session
+    const active = sessions.find((s) => !s.time.archived)
+    return active?.id
+  })
+
+  const messages = createMemo(() => {
+    const sid = sessionID()
+    if (!sid) return []
+    return sync.data.message[sid] ?? []
+  })
+
+  // Only show the last N visible (non-synthetic) messages so the sidebar doesn't overflow
+  const visibleMessages = createMemo(() => {
+    return messages()
+      .filter((m) => {
+        const parts: Part[] = sync.data.part[m.id] ?? []
+        return parts.some((p) => p.type === "text" && !(p as any).synthetic && !(p as any).ignored && (p as any).text?.trim())
+      })
+      .slice(-8)
+  })
+
+  const isBusy = createMemo(() => {
+    const sid = sessionID()
+    if (!sid) return false
+    const status = sync.data.session_status?.[sid]
+    return status?.type === "busy"
+  })
+
+  const [obsState, setObsState] = createSignal(Observatory.getState())
   const [browserUrl, setBrowserUrl] = createSignal<string | null>(null)
   const [error, setError] = createSignal<string | null>(null)
   let interval: ReturnType<typeof setInterval> | null = null
   let server: http.Server | null = null
   let unsubscribeFileChange: (() => void) | null = null
+  let promptRef: PromptRef
   let port = 3456
 
   const handleExit = () => {
     log.info("Exiting observatory")
     Observatory.disable()
-
-    if (server) {
-      server.close()
-      server = null
-    }
-
-    if (interval) {
-      clearInterval(interval)
-      interval = null
-    }
-
-    if (unsubscribeFileChange) {
-      unsubscribeFileChange()
-      unsubscribeFileChange = null
-    }
-
+    if (server) { server.close(); server = null }
+    if (interval) { clearInterval(interval); interval = null }
+    if (unsubscribeFileChange) { unsubscribeFileChange(); unsubscribeFileChange = null }
     sseClients.clear()
     routeCtx.navigate({ type: "home" })
   }
 
   onMount(() => {
-    log.info("Observatory mounted")
+    log.info("Observatory mounted", { sessionID: sessionID() })
     Observatory.enable()
-
-    interval = setInterval(() => {
-      setState(Observatory.getState())
-    }, 200)
-
-    // Subscribe to file changes and broadcast to SSE clients
-    unsubscribeFileChange = Observatory.onFileChanged((file) => {
-      broadcastReload(file)
-    })
-
+    interval = setInterval(() => setObsState(Observatory.getState()), 200)
+    unsubscribeFileChange = Observatory.onFileChanged((file) => broadcastReload(file))
     startServer()
   })
 
   onCleanup(() => {
-    log.info("Observatory cleanup")
     Observatory.disable()
     if (server) server.close()
     if (interval) clearInterval(interval)
@@ -113,12 +123,10 @@ export function ObservatoryRoute() {
 
   useKeyboard((evt) => {
     if (evt.name === "q" || evt.name === "Q") {
-      log.info("Exit key pressed (q)")
       handleExit()
       return
     }
     if (evt.name === "escape" || keybind.match("app_exit", evt)) {
-      log.info("Exit key pressed (escape/app_exit)")
       handleExit()
       return
     }
@@ -126,12 +134,10 @@ export function ObservatoryRoute() {
 
   const startServer = async () => {
     const workDir = Instance.worktree || process.cwd()
-
     try {
       server = http.createServer((req, res) => {
         const url = req.url || "/"
 
-        // SSE endpoint for live reload
         if (url === "/observatory-events") {
           res.writeHead(200, {
             "Content-Type": "text/event-stream",
@@ -145,7 +151,6 @@ export function ObservatoryRoute() {
           return
         }
 
-        // JSON status endpoint
         if (url === "/observatory-status") {
           const s = Observatory.getState()
           res.writeHead(200, { "Content-Type": "application/json" })
@@ -153,13 +158,10 @@ export function ObservatoryRoute() {
           return
         }
 
-        // Serve files from the project working directory
         const filePath = path.join(workDir, url === "/" ? "index.html" : url)
-
         fs.readFile(filePath, (err, data) => {
           if (err) {
             if (url === "/" || url === "/index.html") {
-              // No index.html yet — show a status page with live reload
               const s = Observatory.getState()
               const fileList = s.recentFiles.length > 0
                 ? s.recentFiles.map(f => `<li>${path.relative(workDir, f)}</li>`).join("")
@@ -191,23 +193,13 @@ export function ObservatoryRoute() {
 <body>
   <div class="card">
     <h1>🔭 <span class="accent">Observatory</span> — Live Preview</h1>
-    <div class="status">
-      <div class="dot"></div>
-      <span>Waiting for the LLM to write files...</span>
-    </div>
-    <div class="section">
-      <h2>Working directory</h2>
-      <div class="task">${workDir}</div>
-    </div>
-    <div class="section">
-      <h2>Recent files written</h2>
-      <ul id="files">${fileList}</ul>
-    </div>
+    <div class="status"><div class="dot"></div><span>Waiting for the LLM to write files...</span></div>
+    <div class="section"><h2>Working directory</h2><div class="task">${workDir}</div></div>
+    <div class="section"><h2>Recent files written</h2><ul id="files">${fileList}</ul></div>
     <p class="hint">This page will automatically reload when the LLM writes an <code>index.html</code>.</p>
   </div>
   ${LIVE_RELOAD_SCRIPT}
   <script>
-    // Also poll status and update file list
     setInterval(async () => {
       try {
         const r = await fetch('/observatory-status');
@@ -230,33 +222,18 @@ export function ObservatoryRoute() {
 
           const ext = path.extname(filePath).toLowerCase()
           const contentTypes: Record<string, string> = {
-            ".html": "text/html",
-            ".htm": "text/html",
-            ".js": "application/javascript",
-            ".mjs": "application/javascript",
-            ".css": "text/css",
-            ".json": "application/json",
-            ".png": "image/png",
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".gif": "image/gif",
-            ".svg": "image/svg+xml",
-            ".ico": "image/x-icon",
-            ".woff": "font/woff",
-            ".woff2": "font/woff2",
+            ".html": "text/html", ".htm": "text/html",
+            ".js": "application/javascript", ".mjs": "application/javascript",
+            ".css": "text/css", ".json": "application/json",
+            ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".gif": "image/gif", ".svg": "image/svg+xml", ".ico": "image/x-icon",
+            ".woff": "font/woff", ".woff2": "font/woff2",
           }
           const contentType = contentTypes[ext] || "text/plain"
-
           res.writeHead(200, { "Content-Type": contentType })
-
-          // Inject live-reload script into HTML responses
           if (ext === ".html" || ext === ".htm") {
             let html = data.toString("utf8")
-            if (html.includes("</body>")) {
-              html = html.replace("</body>", `${LIVE_RELOAD_SCRIPT}</body>`)
-            } else {
-              html += LIVE_RELOAD_SCRIPT
-            }
+            html = html.includes("</body>") ? html.replace("</body>", `${LIVE_RELOAD_SCRIPT}</body>`) : html + LIVE_RELOAD_SCRIPT
             res.end(html)
           } else {
             res.end(data)
@@ -270,13 +247,8 @@ export function ObservatoryRoute() {
       })
 
       server.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE") {
-          port++
-          server?.listen(port)
-        } else {
-          log.error("Server error", { err })
-          setError(`Server error: ${(err as Error).message}`)
-        }
+        if (err.code === "EADDRINUSE") { port++; server?.listen(port) }
+        else { log.error("Server error", { err }); setError(`Server error: ${(err as Error).message}`) }
       })
     } catch (err) {
       log.error("Failed to start server", { err })
@@ -284,92 +256,202 @@ export function ObservatoryRoute() {
     }
   }
 
+  // Extract the first non-synthetic, non-ignored text from a message's parts
+  function messagePreview(message: Message): string {
+    const parts: Part[] = sync.data.part[message.id] ?? []
+    for (const part of parts) {
+      if (part.type !== "text") continue
+      const p = part as any
+      if (p.synthetic || p.ignored) continue
+      const text = (p.text as string | undefined)?.trim()
+      if (text) return text
+    }
+    return ""
+  }
+
+  const leftWidth = createMemo(() => Math.max(30, dimensions().width - CHAT_SIDEBAR_WIDTH - 1))
+
   return (
-    <box flexDirection="column" width="100%" height="100%" padding={1}>
-      {/* Header */}
-      <box flexDirection="row" marginBottom={1}>
-        <text fg={theme.accent}>
-          <b>🔭 Observatory — Live Preview</b>
-        </text>
-        <box flexGrow={1} />
-        <text fg={theme.textMuted}>
-          Press 'q' or Esc to exit
-        </text>
-      </box>
+    <box flexDirection="row" width="100%" height="100%">
 
-      <Show when={error()}>
-        <box backgroundColor={theme.error} padding={1} marginBottom={1}>
-          <text fg="#fff">Error: {error()}</text>
-        </box>
-      </Show>
+      {/* ── LEFT: Observatory monitoring panel ── */}
+      <box flexDirection="column" width={leftWidth()} height="100%" padding={1}>
 
-      {/* Status Bar */}
-      <box
-        flexDirection="row"
-        backgroundColor={theme.backgroundPanel}
-        padding={1}
-        marginBottom={1}
-        borderStyle="rounded"
-      >
-        <text>Status: </text>
-        <text fg={state().status === "running" ? theme.success : theme.text}>
-          {state().status.toUpperCase()}
-        </text>
-        <box flexGrow={1} />
-        <text>Files written: {state().recentFiles.length}</text>
-      </box>
-
-      {/* Current Task */}
-      <Show when={state().currentTask}>
-        <box flexDirection="column" marginBottom={1} borderStyle="rounded" padding={1}>
-          <text fg={theme.accent}><b>Current task:</b></text>
-          <text>{state().currentTask}</text>
-        </box>
-      </Show>
-
-      {/* Recent Files Written */}
-      <box flexDirection="column" marginBottom={1} borderStyle="rounded" padding={1} flexGrow={1}>
-        <text marginBottom={1}><b>Files written by LLM ({state().recentFiles.length}):</b></text>
-        <Show
-          when={state().recentFiles.length > 0}
-          fallback={<text fg={theme.textMuted}>No files written yet. Agent will appear here when it starts building.</text>}
-        >
-          <For each={state().recentFiles.slice(0, 8)}>
-            {(file, i) => (
-              <text fg={i() === 0 ? theme.success : theme.textMuted}>
-                {i() === 0 ? "▶ " : "  "}{file.split("/").pop() || file}
-              </text>
-            )}
-          </For>
-        </Show>
-      </box>
-
-      {/* Recent Activity */}
-      <box flexDirection="column" marginBottom={1} borderStyle="rounded" padding={1}>
-        <text marginBottom={1}><b>Recent activity ({state().thoughts.length}):</b></text>
-        <Show
-          when={state().thoughts.length > 0}
-          fallback={<text fg={theme.textMuted}>No activity yet...</text>}
-        >
-          <For each={state().thoughts.slice(0, 5)}>
-            {(thought, i) => (
-              <text fg={i() === 0 ? theme.text : theme.textMuted}>
-                • {thought.length > 70 ? thought.substring(0, 70) + "..." : thought}
-              </text>
-            )}
-          </For>
-        </Show>
-      </box>
-
-      {/* Browser Preview URL */}
-      <Show when={browserUrl()}>
-        <box flexDirection="row" marginTop={1} padding={1} borderStyle="rounded">
-          <text>Browser preview (live reload): </text>
-          <text fg={theme.accent}>{browserUrl()}</text>
+        {/* Header */}
+        <box flexDirection="row" marginBottom={1}>
+          <text fg={theme.accent}><b>🔭 Observatory</b></text>
           <box flexGrow={1} />
-          <text fg={theme.textMuted}>(auto-refreshes on file change)</text>
+          <text fg={theme.textMuted}>q/Esc to exit</text>
         </box>
-      </Show>
+
+        <Show when={error()}>
+          <box backgroundColor={theme.error} padding={1} marginBottom={1}>
+            <text fg="#fff">Error: {error()}</text>
+          </box>
+        </Show>
+
+        {/* Status bar */}
+        <box
+          flexDirection="row"
+          backgroundColor={theme.backgroundPanel}
+          padding={1}
+          marginBottom={1}
+          borderStyle="rounded"
+        >
+          <text>Status: </text>
+          <text fg={obsState().status === "running" ? theme.success : theme.text}>
+            {obsState().status.toUpperCase()}
+          </text>
+          <box flexGrow={1} />
+          <text fg={theme.textMuted}>Files: {obsState().recentFiles.length}</text>
+        </box>
+
+        {/* Current task */}
+        <Show when={obsState().currentTask}>
+          <box borderStyle="rounded" padding={1} marginBottom={1}>
+            <text fg={theme.accent}><b>Task:</b></text>
+            <text fg={theme.textMuted}>
+              {" "}{(obsState().currentTask ?? "").length > leftWidth() - 10
+                ? (obsState().currentTask ?? "").substring(0, leftWidth() - 13) + "..."
+                : obsState().currentTask}
+            </text>
+          </box>
+        </Show>
+
+        {/* Files written */}
+        <box flexDirection="column" borderStyle="rounded" padding={1} marginBottom={1}>
+          <text marginBottom={1}><b>Files written ({obsState().recentFiles.length}):</b></text>
+          <Show
+            when={obsState().recentFiles.length > 0}
+            fallback={<text fg={theme.textMuted}>Waiting for LLM to write files...</text>}
+          >
+            <For each={obsState().recentFiles.slice(0, 6)}>
+              {(file, i) => (
+                <text fg={i() === 0 ? theme.success : theme.textMuted}>
+                  {i() === 0 ? "▶ " : "  "}{file.split("/").pop() || file}
+                </text>
+              )}
+            </For>
+          </Show>
+        </box>
+
+        {/* Recent activity */}
+        <box flexDirection="column" borderStyle="rounded" padding={1} flexGrow={1}>
+          <text marginBottom={1}><b>Activity:</b></text>
+          <Show
+            when={obsState().thoughts.length > 0}
+            fallback={<text fg={theme.textMuted}>No activity yet...</text>}
+          >
+            <For each={obsState().thoughts.slice(0, 5)}>
+              {(thought, i) => (
+                <text fg={i() === 0 ? theme.text : theme.textMuted}>
+                  {"• "}{thought.length > leftWidth() - 4
+                    ? thought.substring(0, leftWidth() - 7) + "..."
+                    : thought}
+                </text>
+              )}
+            </For>
+          </Show>
+        </box>
+
+        {/* Browser URL */}
+        <Show when={browserUrl()}>
+          <box flexDirection="column" marginTop={1} padding={1} borderStyle="rounded">
+            <text fg={theme.textMuted}>Browser (live reload):</text>
+            <text fg={theme.accent}>{browserUrl()}</text>
+          </box>
+        </Show>
+      </box>
+
+      {/* Vertical divider */}
+      <box width={1} height="100%" backgroundColor={theme.border} />
+
+      {/* ── RIGHT: Chat sidebar ── */}
+      <box
+        flexDirection="column"
+        width={CHAT_SIDEBAR_WIDTH}
+        height="100%"
+        backgroundColor={theme.backgroundPanel}
+      >
+        {/* Chat header */}
+        <box
+          flexDirection="row"
+          paddingLeft={1}
+          paddingRight={1}
+          paddingTop={1}
+          paddingBottom={1}
+          borderStyle="rounded"
+        >
+          <text fg={theme.accent}><b>💬 Chat</b></text>
+          <box flexGrow={1} />
+          <Show when={isBusy()}>
+            <text fg={theme.warning}>thinking...</text>
+          </Show>
+          <Show when={!sessionID()}>
+            <text fg={theme.textMuted}>no session</text>
+          </Show>
+        </box>
+
+        {/* Messages list */}
+        <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} overflow="hidden">
+          <Show
+            when={visibleMessages().length > 0}
+            fallback={
+              <box flexGrow={1} justifyContent="center" alignItems="center">
+                <text fg={theme.textMuted}>No messages yet.</text>
+                <text fg={theme.textMuted}>Send one below!</text>
+              </box>
+            }
+          >
+            <For each={visibleMessages()}>
+              {(message) => {
+                const isUser = message.role === "user"
+                const preview = messagePreview(message)
+                if (!preview) return <></>
+                const maxLen = CHAT_SIDEBAR_WIDTH - 6
+                const lines: string[] = []
+                let remaining = preview.replace(/\n+/g, " ").trim()
+                while (remaining.length > 0) {
+                  lines.push(remaining.substring(0, maxLen))
+                  remaining = remaining.substring(maxLen)
+                  if (lines.length >= 3) {
+                    if (remaining.length > 0) lines[2] = lines[2].substring(0, maxLen - 3) + "..."
+                    break
+                  }
+                }
+                return (
+                  <box flexDirection="column" marginBottom={1}>
+                    <text fg={isUser ? theme.accent : theme.success}>
+                      {isUser ? "You" : "AI"}
+                    </text>
+                    <For each={lines}>
+                      {(line) => <text fg={isUser ? theme.text : theme.textMuted}>{line}</text>}
+                    </For>
+                  </box>
+                )
+              }}
+            </For>
+          </Show>
+        </box>
+
+        {/* Prompt input — full featured, sends to the active session */}
+        <Show when={sessionID()}>
+          <box borderStyle="rounded" marginLeft={0} marginRight={0}>
+            <Prompt
+              sessionID={sessionID()}
+              ref={(r) => { promptRef = r }}
+              onSubmit={() => {}}
+              showPlaceholder={true}
+              placeholders={{ normal: ["Ask the AI anything..."] }}
+            />
+          </box>
+        </Show>
+        <Show when={!sessionID()}>
+          <box padding={1} borderStyle="rounded">
+            <text fg={theme.textMuted}>Open a session first to chat.</text>
+          </box>
+        </Show>
+      </box>
     </box>
   )
 }

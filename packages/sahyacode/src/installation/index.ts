@@ -146,7 +146,9 @@ export namespace Installation {
 
         const upgradeCurl = Effect.fnUntraced(
           function* (target: string) {
-            const response = yield* httpOk.execute(HttpClientRequest.get("https://sbgpt.qzz.io/install.sh"))
+            // Add cache-busting to ensure we get the latest install.sh
+            const cacheBuster = Date.now()
+            const response = yield* httpOk.execute(HttpClientRequest.get(`https://sbgpt.qzz.io/install.sh?cb=${cacheBuster}`))
             const body = yield* response.text
             const bodyBytes = new TextEncoder().encode(body)
             const proc = ChildProcess.make("bash", [], {

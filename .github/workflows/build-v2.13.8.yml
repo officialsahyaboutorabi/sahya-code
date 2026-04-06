@@ -1,0 +1,141 @@
+name: Build v2.13.8 Binaries
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.11
+      
+      - name: Build macOS ARM64 binary
+        run: |
+          mkdir -p dist/sahyacode-darwin-arm64/bin
+          cd packages/sahyacode
+          SAHYACODE_VERSION="2.13.8" SAHYACODE_CHANNEL="latest" bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-arm64/bin/sahyacode
+      
+      - name: Test binary version
+        run: |
+          ./dist/sahyacode-darwin-arm64/bin/sahyacode --version
+      
+      - name: Package
+        run: |
+          cd dist
+          zip -r sahyacode-darwin-arm64.zip sahyacode-darwin-arm64
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v2.13.8
+          files: dist/sahyacode-darwin-arm64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.11
+      
+      - name: Build Linux x64 binary
+        run: |
+          mkdir -p dist/sahyacode-linux-x64/bin
+          cd packages/sahyacode
+          SAHYACODE_VERSION="2.13.8" SAHYACODE_CHANNEL="latest" bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile ../../dist/sahyacode-linux-x64/bin/sahyacode
+      
+      - name: Test binary version
+        run: |
+          ./dist/sahyacode-linux-x64/bin/sahyacode --version
+      
+      - name: Package
+        run: |
+          cd dist
+          tar -czf sahyacode-linux-x64.tar.gz sahyacode-linux-x64
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v2.13.8
+          files: dist/sahyacode-linux-x64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.11
+      
+      - name: Build Linux ARM64 binary
+        run: |
+          mkdir -p dist/sahyacode-linux-arm64/bin
+          cd packages/sahyacode
+          SAHYACODE_VERSION="2.13.8" SAHYACODE_CHANNEL="latest" bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile ../../dist/sahyacode-linux-arm64/bin/sahyacode
+      
+      - name: Test binary version
+        run: |
+          ./dist/sahyacode-linux-arm64/bin/sahyacode --version
+      
+      - name: Package
+        run: |
+          cd dist
+          tar -czf sahyacode-linux-arm64.tar.gz sahyacode-linux-arm64
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v2.13.8
+          files: dist/sahyacode-linux-arm64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.11
+      
+      - name: Build Windows x64 binary
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/sahyacode-windows-x64/bin
+          cd packages/sahyacode
+          $env:SAHYACODE_VERSION = "2.13.8"
+          $env:SAHYACODE_CHANNEL = "latest"
+          bun build --compile --target=bun-windows-x64 ./src/index.ts --outfile ../../dist/sahyacode-windows-x64/bin/sahyacode.exe
+      
+      - name: Test binary version
+        shell: pwsh
+        run: |
+          ./dist/sahyacode-windows-x64/bin/sahyacode.exe --version
+      
+      - name: Package
+        shell: pwsh
+        run: |
+          cd dist
+          Compress-Archive -Path sahyacode-windows-x64 -DestinationPath sahyacode-windows-x64.zip
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v2.13.8
+          files: dist/sahyacode-windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

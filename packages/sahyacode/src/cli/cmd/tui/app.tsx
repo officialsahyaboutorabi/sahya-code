@@ -54,6 +54,8 @@ import { KVProvider, useKV } from "./context/kv"
 import { Provider } from "@/provider/provider"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
 import open from "open"
+import * as ObservatoryServer from "@/observatory/server"
+import { Instance } from "@/project/instance"
 import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { TuiConfigProvider, useTuiConfig } from "./context/tui-config"
@@ -288,6 +290,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   })
   onCleanup(() => {
     api.dispose()
+    ObservatoryServer.stop()
   })
   const [ready, setReady] = createSignal(false)
   TuiPluginRuntime.init(api)
@@ -675,12 +678,30 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         aliases: ["obs", "watch"],
       },
       onSelect: () => {
-        const sessionID = route.data.type === "session" ? route.data.sessionID : undefined
-        route.navigate({
-          type: "observatory",
-          sessionID,
-        })
         dialog.clear()
+        const workDir = Instance.worktree || process.cwd()
+        if (ObservatoryServer.isRunning()) {
+          const url = ObservatoryServer.getUrl()!
+          open(url).catch(() => {})
+          toast.show({ message: `Observatory already running: ${url}`, variant: "info", duration: 4000 })
+          return
+        }
+        ObservatoryServer.start(workDir)
+          .then((url) => {
+            open(url).catch(() => {})
+            toast.show({
+              message: `🔭 Live preview opened at ${url} — the browser will auto-reload as the LLM writes files.`,
+              variant: "success",
+              duration: 6000,
+            })
+          })
+          .catch((err) => {
+            toast.show({
+              message: `Observatory failed to start: ${err instanceof Error ? err.message : String(err)}`,
+              variant: "error",
+              duration: 5000,
+            })
+          })
       },
       category: "System",
     },

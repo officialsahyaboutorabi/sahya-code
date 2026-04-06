@@ -25,8 +25,21 @@ jobs:
         with:
           bun-version: 1.2.2
       
+      - name: Install jq
+        run: |
+          if ! command -v jq &> /dev/null; then
+            if command -v apt-get &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y jq
+            elif command -v brew &> /dev/null; then
+              brew install jq
+            fi
+          fi
+      
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          # Remove packageManager field temporarily to allow pnpm
+          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
+          pnpm install
       
       - name: Build macOS ARM64 binary
         run: |
@@ -65,8 +78,21 @@ jobs:
         with:
           bun-version: 1.2.2
       
+      - name: Install jq
+        run: |
+          if ! command -v jq &> /dev/null; then
+            if command -v apt-get &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y jq
+            elif command -v brew &> /dev/null; then
+              brew install jq
+            fi
+          fi
+      
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          # Remove packageManager field temporarily to allow pnpm
+          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
+          pnpm install
       
       - name: Build Linux x64 binary
         run: |
@@ -105,8 +131,21 @@ jobs:
         with:
           bun-version: 1.2.2
       
+      - name: Install jq
+        run: |
+          if ! command -v jq &> /dev/null; then
+            if command -v apt-get &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y jq
+            elif command -v brew &> /dev/null; then
+              brew install jq
+            fi
+          fi
+      
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          # Remove packageManager field temporarily to allow pnpm
+          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
+          pnpm install
       
       - name: Build Linux ARM64 binary
         run: |
@@ -145,8 +184,21 @@ jobs:
         with:
           bun-version: 1.2.2
       
+      - name: Install jq
+        run: |
+          if ! command -v jq &> /dev/null; then
+            if command -v apt-get &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y jq
+            elif command -v brew &> /dev/null; then
+              brew install jq
+            fi
+          fi
+      
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          # Remove packageManager field temporarily to allow pnpm
+          jq 'del(.packageManager)' package.json > package.json.tmp && mv package.json.tmp package.json
+          pnpm install
       
       - name: Build Windows x64 binary
         shell: pwsh

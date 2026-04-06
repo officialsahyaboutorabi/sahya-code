@@ -4,25 +4,29 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (e.g., v2.13.5)'
+        description: 'Version (e.g., v2.13.8)'
         required: true
-        default: 'v2.13.5'
+        default: 'v2.13.8'
 
 permissions:
   contents: write
 
 jobs:
-  build-macos:
+  build-macos-arm64:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
       
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.2.2
       
       - name: Install dependencies
-        run: bun install
+        run: pnpm install
       
       - name: Build macOS ARM64 binary
         run: |
@@ -48,17 +52,61 @@ jobs:
           name: macos-arm64
           path: dist/sahyacode-darwin-arm64.zip
 
-  build-linux:
-    runs-on: ubuntu-latest
+  build-macos-x64:
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
       
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.2.2
       
       - name: Install dependencies
-        run: bun install
+        run: pnpm install
+      
+      - name: Build macOS x64 binary
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION="${VERSION#v}"
+          echo "Building version: $VERSION"
+          mkdir -p dist/sahyacode-darwin-x64/bin
+          cd packages/sahyacode
+          SAHYACODE_VERSION="$VERSION" SAHYACODE_CHANNEL="latest" bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile ../../dist/sahyacode-darwin-x64/bin/sahyacode
+      
+      - name: Test binary version
+        run: |
+          ./dist/sahyacode-darwin-x64/bin/sahyacode --version
+      
+      - name: Package
+        run: |
+          cd dist
+          zip -r sahyacode-darwin-x64.zip sahyacode-darwin-x64
+          ls -la *.zip
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64
+          path: dist/sahyacode-darwin-x64.zip
+
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.2
+      
+      - name: Install dependencies
+        run: pnpm install
       
       - name: Build Linux x64 binary
         run: |
@@ -84,8 +132,93 @@ jobs:
           name: linux-x64
           path: dist/sahyacode-linux-x64.tar.gz
 
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.2
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Build Linux ARM64 binary
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION="${VERSION#v}"
+          echo "Building version: $VERSION"
+          mkdir -p dist/sahyacode-linux-arm64/bin
+          cd packages/sahyacode
+          SAHYACODE_VERSION="$VERSION" SAHYACODE_CHANNEL="latest" bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile ../../dist/sahyacode-linux-arm64/bin/sahyacode
+      
+      - name: Test binary version
+        run: |
+          ./dist/sahyacode-linux-arm64/bin/sahyacode --version
+      
+      - name: Package
+        run: |
+          cd dist
+          tar -czf sahyacode-linux-arm64.tar.gz sahyacode-linux-arm64
+          ls -la *.tar.gz
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64
+          path: dist/sahyacode-linux-arm64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.2
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Build Windows x64 binary
+        shell: pwsh
+        run: |
+          $VERSION = "${{ github.event.inputs.version }}"
+          $VERSION = $VERSION -replace '^v',''
+          Write-Host "Building version: $VERSION"
+          New-Item -ItemType Directory -Force -Path dist/sahyacode-windows-x64/bin
+          cd packages/sahyacode
+          $env:SAHYACODE_VERSION = $VERSION
+          $env:SAHYACODE_CHANNEL = "latest"
+          bun build --compile --target=bun-windows-x64 ./src/index.ts --outfile ../../dist/sahyacode-windows-x64/bin/sahyacode.exe
+      
+      - name: Test binary version
+        shell: pwsh
+        run: |
+          ./dist/sahyacode-windows-x64/bin/sahyacode.exe --version
+      
+      - name: Package
+        shell: pwsh
+        run: |
+          cd dist
+          Compress-Archive -Path sahyacode-windows-x64 -DestinationPath sahyacode-windows-x64.zip
+          Get-ChildItem *.zip
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: dist/sahyacode-windows-x64.zip
+
   create-release:
-    needs: [build-macos, build-linux]
+    needs: [build-macos-arm64, build-macos-x64, build-linux-x64, build-linux-arm64, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

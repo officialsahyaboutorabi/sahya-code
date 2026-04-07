@@ -5,6 +5,14 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.4] - 2026-04-07
+
+### Fixed
+
+- **`/upgrade` command now works** — the `onSelect` handler was `async` but `onSelect` is never awaited by the TUI, so the upgrade ran silently with no feedback. Converted to `.then()/.catch()` (synchronous entry) so the upgrade runs properly and shows success/error toasts
+- **Observatory shows the correct working directory** — now uses `sdk.directory` (the actual project directory) as primary source instead of falling back to `process.cwd()` which returned the user's home folder
+- **Observatory watches all file types live** — status page now auto-navigates when `index.html` appears; hint text updated; added JSX/TSX/TS content types to the file server
+
 ## [v2.14.3] - 2026-04-07
 
 ### Fixed

@@ -651,22 +651,37 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       slash: {
         name: "upgrade",
       },
-      onSelect: async () => {
+      onSelect: () => {
+        dialog.clear()
         toast.show({
           variant: "info",
-          message: "Checking for updates...",
-          duration: 3000,
+          message: "Upgrading SahyaCode — this may take a moment...",
+          duration: 30000,
         })
-        const result = await sdk.client.global.upgrade({})
-        if (result.error) {
-          toast.show({
-            variant: "error",
-            title: "Update Check Failed",
-            message: "Failed to check for updates",
-            duration: 5000,
+        sdk.client.global.upgrade({})
+          .then((result) => {
+            if (result.error || !result.data?.success) {
+              const msg =
+                (result.data as any)?.error ||
+                (result.error instanceof Error ? result.error.message : String(result.error)) ||
+                "Upgrade failed"
+              toast.show({ variant: "error", title: "Upgrade Failed", message: msg, duration: 8000 })
+              return
+            }
+            toast.show({
+              variant: "success",
+              message: `✅ Upgraded to v${result.data.version}! Please restart SahyaCode.`,
+              duration: 12000,
+            })
           })
-        }
-        dialog.clear()
+          .catch((err) => {
+            toast.show({
+              variant: "error",
+              title: "Upgrade Failed",
+              message: err instanceof Error ? err.message : String(err),
+              duration: 8000,
+            })
+          })
       },
       category: "System",
     },
@@ -679,11 +694,13 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
       onSelect: () => {
         dialog.clear()
-        let workDir: string
+        // Prefer the SDK directory (actual project directory), then Instance.worktree,
+        // then process.cwd() as last resort. Instance.worktree throws outside ALS context.
+        let workDir: string = sdk.directory || process.cwd()
         try {
-          workDir = Instance.worktree || process.cwd()
+          workDir = Instance.worktree || workDir
         } catch {
-          workDir = process.cwd()
+          // Instance context not available — workDir already set above
         }
         if (ObservatoryServer.isRunning()) {
           const url = ObservatoryServer.getUrl()!

@@ -16,6 +16,12 @@ const LIVE_RELOAD_SCRIPT = `<script>
       var msg = JSON.parse(e.data);
       if (msg.type === 'reload') {
         console.log('[Observatory] reloading – file changed:', msg.file);
+        // If we're on the waiting/status page and index.html just appeared, navigate to it
+        var changedName = (msg.file || '').split('/').pop();
+        if (changedName === 'index.html' && window.location.pathname === '/') {
+          window.location.reload();
+          return;
+        }
         location.reload();
       }
     } catch(_) {}
@@ -30,6 +36,9 @@ const CONTENT_TYPES: Record<string, string> = {
   ".js": "application/javascript",
   ".mjs": "application/javascript",
   ".cjs": "application/javascript",
+  ".jsx": "application/javascript",
+  ".ts": "application/javascript",
+  ".tsx": "application/javascript",
   ".css": "text/css",
   ".json": "application/json",
   ".png": "image/png",
@@ -133,8 +142,8 @@ function statusPage(workDir: string): string {
     <ul id="files">${fileItems}</ul>
 
     <p class="hint">
-      This page auto-reloads the moment the LLM writes an <code>index.html</code>.<br>
-      Every subsequent file edit also triggers an instant refresh.
+      This page updates live as the LLM writes files.<br>
+      It will automatically navigate to <code>index.html</code> once the project is ready.
     </p>
   </div>
 
@@ -164,6 +173,14 @@ function statusPage(workDir: string): string {
             } else {
               taskDiv.style.display = 'none';
             }
+          }
+          // Auto-navigate when index.html appears
+          if (d.recentFiles && d.recentFiles.some(function(f) {
+            var name = f.split('/').pop();
+            return name === 'index.html';
+          })) {
+            window.location.href = '/';
+            return;
           }
         })
         .catch(function(){})

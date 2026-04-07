@@ -74,7 +74,7 @@ export const EditTool = Tool.define("edit", {
         })
         await Filesystem.write(filePath, params.newString)
         await Format.file(filePath)
-        ObservatoryHooks.captureFileWrite(filePath)
+        ObservatoryHooks.captureFileWrite(filePath, params.newString, Instance.directory, "write")
         Bus.publish(File.Event.Edited, { file: filePath })
         await Bus.publish(FileWatcher.Event.Updated, {
           file: filePath,
@@ -111,7 +111,7 @@ export const EditTool = Tool.define("edit", {
 
       await Filesystem.write(filePath, contentNew)
       await Format.file(filePath)
-      ObservatoryHooks.captureFileWrite(filePath)
+      ObservatoryHooks.captureFileWrite(filePath, contentNew, Instance.directory, "edit")
       Bus.publish(File.Event.Edited, { file: filePath })
       await Bus.publish(FileWatcher.Event.Updated, {
         file: filePath,

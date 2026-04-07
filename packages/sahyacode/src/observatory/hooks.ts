@@ -1,7 +1,12 @@
+import fs from "fs"
+import path from "path"
+import os from "os"
 import { Observatory } from "./index"
 import { Log } from "../util/log"
 
 const log = Log.create({ service: "observatory.hooks" })
+
+const LIVE_VIEW_DIR = path.join(os.homedir(), "live-view")
 
 export function captureThought(thought: string) {
   if (!Observatory.isEnabled()) return
@@ -29,12 +34,27 @@ export function captureFileRead(file: string) {
   Observatory.addThought(msg)
 }
 
-export function captureFileWrite(file: string) {
+export function captureFileWrite(file: string, content?: string, projectDir?: string, action: "write" | "edit" = "write") {
   if (!Observatory.isEnabled()) return
   const msg = `Writing: ${file.split('/').pop() || file}`
   log.debug("Capturing file write", { file: msg })
   Observatory.addThought(msg)
   Observatory.notifyFileChanged(file)
+
+  const relPath = path.relative(projectDir || process.cwd(), file)
+
+  // Mirror file to ~/live-view/ asynchronously
+  const destPath = path.join(LIVE_VIEW_DIR, relPath)
+  fs.promises.mkdir(path.dirname(destPath), { recursive: true })
+    .then(() => fs.promises.copyFile(file, destPath))
+    .catch((err) => log.debug("Failed to mirror file to live-view", { err: String(err) }))
+
+  // Record the event and persist the recording
+  Observatory.addRecordingEvent({ timestamp: Date.now(), relPath, content: content || "", action })
+  const recording = Observatory.getRecording()
+  fs.promises.mkdir(LIVE_VIEW_DIR, { recursive: true })
+    .then(() => fs.promises.writeFile(path.join(LIVE_VIEW_DIR, ".sahya-replay.json"), JSON.stringify(recording, null, 2), "utf8"))
+    .catch((err) => log.debug("Failed to save replay recording", { err: String(err) }))
 }
 
 export function captureToolCall(tool: string, input?: unknown) {

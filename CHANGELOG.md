@@ -5,6 +5,15 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.6] - 2026-04-07
+
+### Added
+
+- **`~/live-view/` staging directory** — observatory now uses a dedicated `~/live-view/` directory; all files written by the LLM are mirrored there automatically with correct relative paths preserved
+- **Recording system** — every file write/edit is recorded as `~/live-view/.sahya-replay.json` with timestamps, relative paths, content and action type (`write`/`edit`)
+- **Move to Original Location** — button on the observatory page sends a `POST /~observatory/move-to` request that copies all files from `~/live-view/` back to the original project directory
+- **Replay page** at `/~observatory/replay` — full construction replay with: animated file tree (files appear as they're created), syntax-highlighted code editor revealing content progressively, play/pause, 1×/2×/4×/8× speed control, and a progress bar
+
 ## [v2.14.5] - 2026-04-07
 
 ### Changed

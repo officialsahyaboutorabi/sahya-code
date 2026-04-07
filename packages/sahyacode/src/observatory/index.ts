@@ -1,5 +1,12 @@
 // Simplified Observatory module for v2.13.7
 export namespace Observatory {
+  export interface RecordingEvent {
+    timestamp: number
+    relPath: string
+    content: string
+    action: "write" | "edit"
+  }
+
   export interface State {
     currentTask?: string
     progress: number
@@ -9,6 +16,7 @@ export namespace Observatory {
     enabled: boolean
     recentFiles: string[]
     lastFileChange?: number
+    recording: RecordingEvent[]
   }
 
   let currentState: State = {
@@ -17,6 +25,7 @@ export namespace Observatory {
     thoughts: [],
     enabled: false,
     recentFiles: [],
+    recording: [],
   }
 
   // Listeners notified whenever a file is written/edited by the LLM
@@ -84,6 +93,14 @@ export namespace Observatory {
     return () => fileChangeListeners.delete(listener)
   }
 
+  export function addRecordingEvent(event: RecordingEvent) {
+    currentState.recording.push(event)
+  }
+
+  export function getRecording(): RecordingEvent[] {
+    return currentState.recording
+  }
+
   export function clear() {
     currentState = {
       progress: 0,
@@ -91,6 +108,7 @@ export namespace Observatory {
       thoughts: [],
       enabled: currentState.enabled,
       recentFiles: [],
+      recording: [],
     }
   }
 }

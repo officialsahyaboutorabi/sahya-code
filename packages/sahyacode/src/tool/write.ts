@@ -45,7 +45,7 @@ export const WriteTool = Tool.define("write", {
 
     await Filesystem.write(filepath, params.content)
     await Format.file(filepath)
-    ObservatoryHooks.captureFileWrite(filepath)
+    ObservatoryHooks.captureFileWrite(filepath, params.content, Instance.directory)
     Bus.publish(File.Event.Edited, { file: filepath })
     await Bus.publish(FileWatcher.Event.Updated, {
       file: filepath,

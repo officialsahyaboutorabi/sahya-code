@@ -1,12 +1,15 @@
 import http from "http"
 import fs from "fs"
 import path from "path"
+import os from "os"
 import { Observatory } from "./index"
 import { Log } from "../util/log"
 
 const log = Log.create({ service: "observatory.server" })
 
 const sseClients = new Set<http.ServerResponse>()
+
+export const LIVE_VIEW_DIR = path.join(os.homedir(), "live-view")
 
 const LIVE_RELOAD_SCRIPT = `<script>
 (function() {
@@ -55,11 +58,441 @@ const CONTENT_TYPES: Record<string, string> = {
   ".webm": "video/webm",
 }
 
-function statusPage(workDir: string): string {
+function replayPage(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Replay — Observatory</title>
+
+  <!-- SB Sans Text -->
+  <style>
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Regular.woff2') format('woff2'); font-weight: normal; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Medium.woff2') format('woff2'); font-weight: 500; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Semibold.woff2') format('woff2'); font-weight: 600; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Bold.woff2') format('woff2'); font-weight: bold; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:   #0d0d0d;
+      --bg-secondary: #121212;
+      --bg-card:      #171717;
+      --bg-hover:     #1f1f1f;
+      --text-primary: #fbfbfb;
+      --text-secondary: #b7b7b7;
+      --accent:       #ff4f00;
+      --accent-glow:  rgba(255,107,44,.1);
+      --success:      #00ff88;
+      --error:        #ff3333;
+      --border:       #2a2a2a;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'SB Sans Text', 'Inter', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Top bar */
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .topbar-logo { font-size: 1.2rem; }
+    .topbar-title { font-weight: 700; font-size: 1rem; }
+    .topbar-title span { color: var(--accent); }
+    .topbar-badge {
+      margin-left: auto;
+      font-size: .72rem; color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Main layout */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* File tree panel */
+    .tree-panel {
+      width: 220px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--bg-secondary);
+      display: flex;
+      flex-direction: column;
+    }
+    .tree-header {
+      padding: 10px 14px;
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tree-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .tree-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 14px;
+      font-size: .82rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background .1s, color .1s;
+      word-break: break-all;
+    }
+    .tree-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .tree-item.active { color: var(--accent); background: var(--accent-glow); }
+    .tree-icon { font-size: .75rem; flex-shrink: 0; }
+
+    /* Code panel */
+    .code-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-primary);
+    }
+    .code-filename {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .code-filename span { color: var(--accent); }
+    .code-body { flex: 1; overflow: auto; }
+    .code-body pre {
+      margin: 0;
+      padding: 16px;
+      background: transparent !important;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      line-height: 1.6;
+      min-height: 100%;
+    }
+    .code-body code {
+      background: transparent !important;
+    }
+    /* Override hljs background */
+    .hljs { background: transparent !important; }
+
+    /* Timeline / controls */
+    .controls {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .progress-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .progress-bar-wrap {
+      flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; background: var(--accent); border-radius: 2px;
+      transition: width .1s;
+      width: 0%;
+    }
+    .progress-label {
+      font-size: .72rem; color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      min-width: 50px; text-align: right;
+    }
+    .controls-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-primary); border-radius: 8px;
+      padding: 6px 14px; font-size: .82rem;
+      cursor: pointer; transition: background .15s, border-color .15s;
+      font-family: 'SB Sans Text', 'Inter', sans-serif;
+    }
+    .btn:hover { background: var(--bg-hover); border-color: var(--accent); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #e04400; }
+    select.speed-select {
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-primary); border-radius: 8px;
+      padding: 6px 10px; font-size: .82rem;
+      cursor: pointer;
+      font-family: 'SB Sans Text', 'Inter', sans-serif;
+    }
+    .status-text {
+      margin-left: auto;
+      font-size: .78rem;
+      color: var(--text-secondary);
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+      display: inline-block;
+    }
+    .dot.idle { background: var(--text-secondary); animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .dot.playing { animation: pulse 1s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-logo">🔭</div>
+    <div class="topbar-title"><span>Observatory</span> — Replay</div>
+    <div class="topbar-badge" id="event-count">Loading…</div>
+  </div>
+
+  <div class="main">
+    <div class="tree-panel">
+      <div class="tree-header">Files</div>
+      <div class="tree-body" id="tree"></div>
+    </div>
+    <div class="code-panel">
+      <div class="code-filename" id="code-filename"><span>—</span></div>
+      <div class="code-body">
+        <pre><code id="code-display" class="hljs"></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="progress-row">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-label" id="progress-label">0 / 0</div>
+    </div>
+    <div class="controls-row">
+      <button class="btn primary" id="play-btn">▶ Play</button>
+      <select class="speed-select" id="speed-select">
+        <option value="1">1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+        <option value="8">8×</option>
+      </select>
+      <div class="status-text" id="status-text"><span class="dot idle" id="status-dot"></span> Ready</div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    var recording = [];
+    var currentEventIdx = 0;
+    var playing = false;
+    var speed = 1;
+    var CHUNK_SIZE = 50;
+    var BASE_DELAY = 16; // ms per chunk at 1x
+    var animTimer = null;
+    var treeFiles = {}; // relPath -> true
+
+    var playBtn = document.getElementById('play-btn');
+    var speedSelect = document.getElementById('speed-select');
+    var progressFill = document.getElementById('progress-fill');
+    var progressLabel = document.getElementById('progress-label');
+    var statusText = document.getElementById('status-text');
+    var statusDot = document.getElementById('status-dot');
+    var eventCount = document.getElementById('event-count');
+    var tree = document.getElementById('tree');
+    var codeDisplay = document.getElementById('code-display');
+    var codeFilename = document.getElementById('code-filename');
+
+    function setStatus(text, cls) {
+      statusDot.className = 'dot ' + (cls || '');
+      statusText.innerHTML = '<span class="dot ' + (cls || '') + '"></span> ' + text;
+    }
+
+    function updateProgress() {
+      var total = recording.length;
+      var pct = total > 0 ? (currentEventIdx / total) * 100 : 0;
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = currentEventIdx + ' / ' + total;
+    }
+
+    function addFileToTree(relPath) {
+      if (treeFiles[relPath]) return;
+      treeFiles[relPath] = true;
+      var item = document.createElement('div');
+      item.className = 'tree-item';
+      item.dataset.path = relPath;
+      var parts = relPath.split('/');
+      var name = parts[parts.length - 1];
+      var ext = (name.split('.').pop() || '').toLowerCase();
+      item.innerHTML = '<span class="tree-icon">📄</span><span>' + relPath + '</span>';
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.tree-item').forEach(function(el) { el.classList.remove('active'); });
+        item.classList.add('active');
+        showFileContent(relPath);
+      });
+      tree.appendChild(item);
+    }
+
+    function showFileContent(relPath) {
+      var evt = null;
+      for (var i = recording.length - 1; i >= 0; i--) {
+        if (recording[i].relPath === relPath) { evt = recording[i]; break; }
+      }
+      codeFilename.innerHTML = '<span>' + relPath + '</span>';
+      if (evt) {
+        renderCode(evt.content, relPath);
+      } else {
+        codeDisplay.textContent = '';
+      }
+    }
+
+    function renderCode(content, relPath) {
+      var ext = (relPath.split('.').pop() || '').toLowerCase();
+      var langMap = { js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript',
+        py: 'python', html: 'html', css: 'css', json: 'json', md: 'markdown',
+        sh: 'bash', yaml: 'yaml', yml: 'yaml', rs: 'rust', go: 'go', java: 'java' };
+      var lang = langMap[ext] || 'plaintext';
+      codeDisplay.className = 'hljs language-' + lang;
+      codeDisplay.textContent = content;
+      if (window.hljs) {
+        try { window.hljs.highlightElement(codeDisplay); } catch(e) {}
+      }
+    }
+
+    function animateEvent(evt, done) {
+      addFileToTree(evt.relPath);
+
+      // Highlight file in tree
+      document.querySelectorAll('.tree-item').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.path === evt.relPath);
+      });
+
+      codeFilename.innerHTML = '<span>' + evt.relPath + '</span>';
+
+      var content = evt.content;
+      var revealed = 0;
+      var delay = Math.max(1, Math.round(BASE_DELAY / speed));
+      var ext = (evt.relPath.split('.').pop() || '').toLowerCase();
+      var langMap = { js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript',
+        py: 'python', html: 'html', css: 'css', json: 'json', md: 'markdown',
+        sh: 'bash', yaml: 'yaml', yml: 'yaml', rs: 'rust', go: 'go', java: 'java' };
+      var lang = langMap[ext] || 'plaintext';
+
+      function step() {
+        if (!playing) { done(); return; }
+        if (revealed >= content.length) {
+          // Final highlight
+          codeDisplay.className = 'hljs language-' + lang;
+          codeDisplay.textContent = content;
+          if (window.hljs) {
+            try { window.hljs.highlightElement(codeDisplay); } catch(e) {}
+          }
+          done();
+          return;
+        }
+        revealed = Math.min(revealed + CHUNK_SIZE, content.length);
+        var partial = content.substring(0, revealed);
+        // Set without syntax highlight during typing for performance
+        codeDisplay.className = 'hljs';
+        codeDisplay.textContent = partial;
+        animTimer = setTimeout(step, delay);
+      }
+
+      step();
+    }
+
+    function runReplay() {
+      if (currentEventIdx >= recording.length) {
+        playing = false;
+        playBtn.textContent = '↺ Replay';
+        setStatus('Complete', '');
+        return;
+      }
+
+      var evt = recording[currentEventIdx];
+      currentEventIdx++;
+      updateProgress();
+      setStatus('Writing: ' + evt.relPath, 'playing');
+
+      animateEvent(evt, function() {
+        if (!playing) return;
+        animTimer = setTimeout(runReplay, Math.max(1, Math.round(200 / speed)));
+      });
+    }
+
+    playBtn.addEventListener('click', function() {
+      if (playing) {
+        // Pause
+        playing = false;
+        if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+        playBtn.textContent = '▶ Resume';
+        setStatus('Paused', 'idle');
+      } else {
+        // Play or resume
+        if (currentEventIdx >= recording.length) {
+          // Reset
+          currentEventIdx = 0;
+          tree.innerHTML = '';
+          treeFiles = {};
+          codeDisplay.textContent = '';
+          codeFilename.innerHTML = '<span>—</span>';
+          updateProgress();
+        }
+        playing = true;
+        playBtn.textContent = '⏸ Pause';
+        setStatus('Playing…', 'playing');
+        runReplay();
+      }
+    });
+
+    speedSelect.addEventListener('change', function() {
+      speed = parseInt(this.value, 10) || 1;
+    });
+
+    // Load recording
+    fetch('/~observatory/recording')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        recording = Array.isArray(data) ? data : [];
+        eventCount.textContent = recording.length + ' events';
+        updateProgress();
+        setStatus('Ready — ' + recording.length + ' file events', '');
+      })
+      .catch(function() {
+        eventCount.textContent = 'No recording found';
+        setStatus('No recording data', 'idle');
+      });
+  })();
+  </script>
+</body>
+</html>`
+}
+
+function statusPage(projectDir: string): string {
   const s = Observatory.getState()
   const fileItems = s.recentFiles.length > 0
     ? s.recentFiles.map(f => {
-        const rel = path.relative(workDir, f)
+        const rel = path.relative(LIVE_VIEW_DIR, f)
         const ext = path.extname(f).slice(1) || "?"
         return `<li><span class="badge">${ext}</span><span class="file-name">${rel}</span></li>`
       }).join("")
@@ -174,6 +607,15 @@ function statusPage(workDir: string): string {
       background: var(--bg-primary); border: 1px solid var(--border);
       border-radius: 10px; padding: 10px 14px;
       font-family: 'JetBrains Mono', monospace; font-size: .82rem;
+      color: var(--text-secondary); margin-bottom: 8px;
+      word-break: break-all;
+    }
+
+    /* Project dir label */
+    .proj-dir {
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace; font-size: .82rem;
       color: var(--text-secondary); margin-bottom: 24px;
       word-break: break-all;
     }
@@ -215,6 +657,26 @@ function statusPage(workDir: string): string {
       background: var(--bg-hover); border-radius: 5px; padding: 1px 5px;
       color: var(--accent);
     }
+
+    /* Action buttons */
+    .actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .action-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-primary); border-radius: 10px;
+      padding: 8px 16px; font-size: .85rem;
+      cursor: pointer; transition: background .15s, border-color .15s;
+      font-family: 'SB Sans Text', 'Inter', sans-serif;
+      text-decoration: none;
+    }
+    .action-btn:hover { background: var(--bg-hover); border-color: var(--accent); }
+    .action-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .action-btn.primary:hover { background: #e04400; }
+    .action-result {
+      margin-top: 10px; font-size: .8rem;
+      color: var(--success);
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -235,11 +697,22 @@ function statusPage(workDir: string): string {
       <div class="task-box" id="task-text"></div>
     </div>
 
-    <div class="label">Working directory</div>
-    <div class="dir">${workDir}</div>
+    <div class="label">Live view directory</div>
+    <div class="dir">${LIVE_VIEW_DIR}</div>
+
+    <div class="label">Project directory</div>
+    <div class="proj-dir">${projectDir}</div>
 
     <div class="label">Files written by the LLM</div>
     <ul id="files">${fileItems}</ul>
+
+    <div class="divider"></div>
+
+    <div class="actions">
+      <a href="/~observatory/replay" class="action-btn">🎬 Watch Replay</a>
+      <button class="action-btn primary" id="move-btn">📁 Move to Original Location</button>
+    </div>
+    <div class="action-result" id="move-result"></div>
 
     <div class="divider"></div>
 
@@ -252,6 +725,33 @@ function statusPage(workDir: string): string {
   ${LIVE_RELOAD_SCRIPT}
 
   <script>
+    // ── Move to original location ─────────────────────────────────────────────
+    document.getElementById('move-btn').addEventListener('click', function() {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = '⏳ Moving…';
+      fetch('/~observatory/move-to', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: ${JSON.stringify(projectDir)} })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var result = document.getElementById('move-result');
+          result.style.display = 'block';
+          result.textContent = d.message || 'Files moved successfully.';
+          btn.textContent = '✅ Moved';
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = '📁 Move to Original Location';
+          var result = document.getElementById('move-result');
+          result.style.display = 'block';
+          result.style.color = 'var(--error)';
+          result.textContent = 'Error: ' + String(err);
+        });
+    });
+
     // ── Starfield ────────────────────────────────────────────────────────────
     (function() {
       var canvas = document.getElementById('star-canvas');
@@ -351,6 +851,9 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
     return Promise.resolve(`http://localhost:${activePort}`)
   }
 
+  // Ensure live-view directory exists
+  fs.mkdirSync(LIVE_VIEW_DIR, { recursive: true })
+
   Observatory.enable()
 
   // Broadcast file changes to all SSE clients
@@ -371,8 +874,9 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
     const tryListen = () => {
       const srv = http.createServer((req, res) => {
         const url = req.url || "/"
+        const method = req.method || "GET"
 
-        // ── Observatory internal endpoints (prefixed so they never clash with project files)
+        // ── Observatory internal endpoints ─────────────────────────────────
         if (url === "/~observatory/events") {
           res.writeHead(200, {
             "Content-Type": "text/event-stream",
@@ -392,8 +896,69 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
           return
         }
 
-        // ── Serve project files ──────────────────────────────────────────────
-        const filePath = path.join(workDir, url === "/" ? "index.html" : url)
+        if (url === "/~observatory/replay") {
+          res.writeHead(200, { "Content-Type": "text/html" })
+          res.end(replayPage())
+          return
+        }
+
+        if (url === "/~observatory/recording") {
+          const recordingPath = path.join(LIVE_VIEW_DIR, ".sahya-replay.json")
+          fs.readFile(recordingPath, (err, data) => {
+            if (err) {
+              res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
+              res.end("[]")
+              return
+            }
+            res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
+            res.end(data)
+          })
+          return
+        }
+
+        if (url === "/~observatory/move-to" && method === "POST") {
+          let body = ""
+          req.on("data", (chunk) => { body += chunk.toString() })
+          req.on("end", async () => {
+            try {
+              const parsed = JSON.parse(body) as { target?: string }
+              const target = parsed.target || workDir
+
+              // Collect all files from LIVE_VIEW_DIR recursively, excluding .sahya-replay.json
+              const getAllFiles = async (dir: string): Promise<string[]> => {
+                const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+                const files: string[] = []
+                for (const entry of entries) {
+                  const fullPath = path.join(dir, entry.name)
+                  if (entry.isDirectory()) {
+                    files.push(...(await getAllFiles(fullPath)))
+                  } else if (entry.name !== ".sahya-replay.json") {
+                    files.push(fullPath)
+                  }
+                }
+                return files
+              }
+
+              const allFiles = await getAllFiles(LIVE_VIEW_DIR)
+              for (const srcFile of allFiles) {
+                const relPath = path.relative(LIVE_VIEW_DIR, srcFile)
+                const destFile = path.join(target, relPath)
+                await fs.promises.mkdir(path.dirname(destFile), { recursive: true })
+                await fs.promises.copyFile(srcFile, destFile)
+              }
+
+              res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
+              res.end(JSON.stringify({ success: true, message: `Moved ${allFiles.length} file(s) to ${target}` }))
+            } catch (err) {
+              res.writeHead(500, { "Content-Type": "application/json" })
+              res.end(JSON.stringify({ success: false, message: String(err) }))
+            }
+          })
+          return
+        }
+
+        // ── Serve project files from LIVE_VIEW_DIR ─────────────────────────
+        const filePath = path.join(LIVE_VIEW_DIR, url === "/" ? "index.html" : url)
 
         fs.readFile(filePath, (err, data) => {
           if (err) {
@@ -437,7 +1002,7 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
       srv.listen(port, "127.0.0.1", () => {
         server = srv
         activePort = port
-        log.info("Observatory server started", { port, workDir })
+        log.info("Observatory server started", { port, workDir, liveViewDir: LIVE_VIEW_DIR })
         resolve(`http://localhost:${port}`)
       })
     }

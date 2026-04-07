@@ -274,6 +274,26 @@ export namespace LLM {
             toolName: lower,
           }
         }
+        // Try stripping Mistral-style inline tool-call tokens (<|tool_call_begin|> etc.)
+        // that some models embed in the content stream instead of using the tool_calls field.
+        const rawInput = failed.toolCall.input ?? ""
+        if (rawInput.includes("<|tool_call_begin|>") || rawInput.includes("<|tool_call_argument_begin|>")) {
+          const argMatch = rawInput.match(/<\|tool_call_argument_begin\|>\s*(\{[\s\S]*?\})\s*(?:<\|tool_call_end\|>|$)/)
+          if (argMatch) {
+            try {
+              JSON.parse(argMatch[1])
+              l.info("repaired Mistral-format tool call tokens", { tool: failed.toolCall.toolName })
+              return { ...failed.toolCall, input: argMatch[1] }
+            } catch {}
+          }
+          // Strip the tokens and everything after the first valid JSON object
+          const stripped = rawInput.replace(/<\|tool_call_begin\|>[\s\S]*/g, "").trim()
+          try {
+            JSON.parse(stripped)
+            l.info("repaired Mistral-format tool call by stripping tokens", { tool: failed.toolCall.toolName })
+            return { ...failed.toolCall, input: stripped }
+          } catch {}
+        }
         return {
           ...failed.toolCall,
           input: JSON.stringify({

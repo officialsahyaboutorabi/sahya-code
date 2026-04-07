@@ -5,6 +5,13 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.3] - 2026-04-07
+
+### Fixed
+
+- **`/observe` command now works** — fixed `Context.NotFound` crash caused by accessing `Instance.worktree` outside an active session context; now safely falls back to `process.cwd()`
+- **Mistral-format tool call repair** — when a model outputs tool calls using `<|tool_call_begin|>` tokens in the text stream, the repair handler now attempts to extract valid JSON from the tokens before falling back to the `invalid` tool display
+
 ## [v2.14.2] - 2026-04-06
 
 ### Changed

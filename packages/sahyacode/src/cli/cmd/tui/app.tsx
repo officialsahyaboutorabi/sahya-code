@@ -679,7 +679,12 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
       onSelect: () => {
         dialog.clear()
-        const workDir = Instance.worktree || process.cwd()
+        let workDir: string
+        try {
+          workDir = Instance.worktree || process.cwd()
+        } catch {
+          workDir = process.cwd()
+        }
         if (ObservatoryServer.isRunning()) {
           const url = ObservatoryServer.getUrl()!
           open(url).catch(() => {})

@@ -60,7 +60,8 @@ function statusPage(workDir: string): string {
   const fileItems = s.recentFiles.length > 0
     ? s.recentFiles.map(f => {
         const rel = path.relative(workDir, f)
-        return `<li><span class="badge">${path.extname(f).slice(1) || "?"}</span>${rel}</li>`
+        const ext = path.extname(f).slice(1) || "?"
+        return `<li><span class="badge">${ext}</span><span class="file-name">${rel}</span></li>`
       }).join("")
     : `<li class="empty">Waiting for the LLM to write files…</li>`
 
@@ -69,66 +70,165 @@ function statusPage(workDir: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Observatory — Live Preview</title>
+  <title>Observatory — SahyaCode</title>
+
+  <!-- SB Sans Text -->
+  <style>
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Regular.woff2') format('woff2'); font-weight: normal; font-style: normal; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Semibold.woff2') format('woff2'); font-weight: 600; font-style: normal; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Bold.woff2') format('woff2'); font-weight: bold; font-style: normal; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --bg: #0d1117; --surface: #161b22; --border: #30363d;
-      --accent: #ff6b2b; --muted: #8b949e; --text: #e6edf3;
-      --green: #3fb950; --radius: 10px;
+      --bg-primary:   #0d0d0d;
+      --bg-secondary: #121212;
+      --bg-card:      #171717;
+      --bg-hover:     #1f1f1f;
+      --text-primary: #fbfbfb;
+      --text-secondary: #b7b7b7;
+      --accent:       #ff4f00;
+      --accent-glow:  rgba(255,107,44,.1);
+      --success:      #00ff88;
+      --error:        #ff3333;
+      --border:       #2a2a2a;
     }
+
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg); color: var(--text);
+      font-family: 'SB Sans Text', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary); color: var(--text-primary);
       min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 32px 16px;
+      align-items: center; justify-content: center;
+      padding: 32px 16px; line-height: 1.6; overflow-x: hidden;
     }
+
+    /* Hide scrollbars */
+    ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+    * { scrollbar-width: none; -ms-overflow-style: none; }
+
+    /* Noise overlay */
+    .noise {
+      position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: .03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* Starfield */
+    #stars {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background: var(--bg-primary);
+    }
+    #stars canvas { display: block; width: 100%; height: 100%; }
+
+    /* Card */
     .card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 32px;
-      max-width: 560px; width: 100%;
+      position: relative; z-index: 1;
+      background: rgba(23,23,23,.85); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: 20px;
+      padding: 36px; max-width: 580px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      animation: card-in .4s cubic-bezier(.16,1,.3,1);
     }
-    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-    .logo { font-size: 1.8rem; }
-    h1 { font-size: 1.3rem; font-weight: 700; }
-    h1 span { color: var(--accent); }
+    @keyframes card-in { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+
+    /* Header */
+    .header { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+    .logo-wrap {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: var(--border); display: flex; align-items: center;
+      justify-content: center; font-size: 1.3rem; flex-shrink: 0;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .title { font-size: 1.25rem; font-weight: 700; }
+    .title span { color: var(--accent); }
+    .subtitle { font-size: .85rem; color: var(--text-secondary); margin-bottom: 24px; margin-left: 56px; }
+
+    /* Status pill */
     .pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(63,185,80,.12); border: 1px solid rgba(63,185,80,.25);
-      border-radius: 999px; padding: 3px 10px; font-size: .78rem;
-      color: var(--green); margin-bottom: 20px;
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.2);
+      border-radius: 999px; padding: 4px 12px; font-size: .78rem;
+      color: var(--success); margin-bottom: 28px;
     }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
-           animation: pulse 1.4s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
-             color: var(--muted); margin-bottom: 6px; }
-    .dir { background: #0d1117; border: 1px solid var(--border); border-radius: 6px;
-           padding: 8px 12px; font-family: monospace; font-size: .85rem;
-           color: var(--muted); margin-bottom: 20px; word-break: break-all; }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    /* Section label */
+    .label {
+      font-size: .72rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-secondary); margin-bottom: 8px;
+    }
+
+    /* Directory */
+    .dir {
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace; font-size: .82rem;
+      color: var(--text-secondary); margin-bottom: 24px;
+      word-break: break-all;
+    }
+
+    /* Current task */
+    #task { margin-bottom: 20px; }
+    .task-box {
+      border-left: 3px solid var(--accent);
+      background: rgba(255,79,0,.06);
+      border-radius: 0 10px 10px 0;
+      padding: 10px 14px; font-size: .9rem; color: var(--text-primary);
+    }
+
+    /* File list */
     ul { list-style: none; }
-    ul li { display: flex; align-items: center; gap: 8px;
-            padding: 6px 0; border-bottom: 1px solid var(--border);
-            font-size: .88rem; color: var(--muted); }
+    ul li {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      font-size: .88rem; color: var(--text-secondary);
+      transition: color .15s;
+    }
     ul li:last-child { border-bottom: none; }
-    ul li.empty { color: var(--muted); font-style: italic; }
-    .badge { background: var(--border); border-radius: 4px; padding: 1px 5px;
-             font-size: .7rem; color: var(--text); font-family: monospace; flex-shrink: 0; }
-    .hint { margin-top: 20px; font-size: .78rem; color: var(--muted); line-height: 1.5; }
-    .hint code { background: var(--border); border-radius: 3px; padding: 1px 4px;
-                  font-size: .8rem; }
-    #task { margin-bottom: 16px; }
-    .task-box { border-left: 3px solid var(--accent); background: #1a1a2e;
-                padding: 8px 12px; border-radius: 4px; font-size: .88rem; }
+    ul li:hover { color: var(--text-primary); }
+    ul li.empty { font-style: italic; color: var(--text-secondary); }
+    .badge {
+      background: var(--border); border-radius: 5px; padding: 2px 7px;
+      font-size: .68rem; font-family: 'JetBrains Mono', monospace;
+      color: var(--accent); flex-shrink: 0; font-weight: 500;
+    }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Divider */
+    .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+    /* Hint */
+    .hint { font-size: .8rem; color: var(--text-secondary); line-height: 1.6; }
+    .hint code {
+      font-family: 'JetBrains Mono', monospace; font-size: .78rem;
+      background: var(--bg-hover); border-radius: 5px; padding: 1px 5px;
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
+  <div class="noise"></div>
+  <div id="stars"><canvas id="star-canvas"></canvas></div>
+
   <div class="card">
     <div class="header">
-      <div class="logo">🔭</div>
-      <h1><span>Observatory</span> — Live Preview</h1>
+      <div class="logo-wrap">🔭</div>
+      <div class="title"><span>Observatory</span> — Live Preview</div>
     </div>
-    <div class="pill"><div class="dot"></div> Connected — waiting for activity</div>
+    <div class="subtitle">SahyaCode is building your project in real time</div>
+
+    <div class="pill"><div class="dot"></div> Connected — watching for file changes</div>
 
     <div id="task" style="display:none">
       <div class="label">Current task</div>
@@ -141,18 +241,54 @@ function statusPage(workDir: string): string {
     <div class="label">Files written by the LLM</div>
     <ul id="files">${fileItems}</ul>
 
+    <div class="divider"></div>
+
     <p class="hint">
-      This page updates live as the LLM writes files.<br>
-      It will automatically navigate to <code>index.html</code> once the project is ready.
+      This page updates live as files are written. It will automatically navigate
+      to the project once <code>index.html</code> is ready.
     </p>
   </div>
 
   ${LIVE_RELOAD_SCRIPT}
 
   <script>
+    // ── Starfield ────────────────────────────────────────────────────────────
+    (function() {
+      var canvas = document.getElementById('star-canvas');
+      var ctx = canvas.getContext('2d');
+      var stars = [];
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      for (var i = 0; i < 120; i++) {
+        stars.push({
+          x: Math.random(), y: Math.random(),
+          r: Math.random() * 1.2 + .2,
+          a: Math.random(), da: (Math.random() - .5) * .004
+        });
+      }
+      function frame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        stars.forEach(function(s) {
+          s.a = Math.max(.05, Math.min(1, s.a + s.da));
+          if (s.a <= .05 || s.a >= 1) s.da *= -1;
+          ctx.beginPath();
+          ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(251,251,251,' + s.a + ')';
+          ctx.fill();
+        });
+        requestAnimationFrame(frame);
+      }
+      frame();
+    })();
+
+    // ── Status polling ────────────────────────────────────────────────────────
     (function poll() {
       fetch('/~observatory/status')
-        .then(r => r.json())
+        .then(function(r) { return r.json(); })
         .then(function(d) {
           // Update file list
           var ul = document.getElementById('files');
@@ -160,7 +296,7 @@ function statusPage(workDir: string): string {
             ul.innerHTML = d.recentFiles.map(function(f) {
               var name = f.split('/').pop();
               var ext  = (name.split('.').pop() || '?').toLowerCase();
-              return '<li><span class="badge">' + ext + '</span>' + name + '</li>';
+              return '<li><span class="badge">' + ext + '</span><span class="file-name">' + name + '</span></li>';
             }).join('');
           }
           // Update task
@@ -169,21 +305,20 @@ function statusPage(workDir: string): string {
           if (taskDiv && taskText) {
             if (d.currentTask) {
               taskDiv.style.display = 'block';
-              taskText.textContent   = d.currentTask;
+              taskText.textContent  = d.currentTask;
             } else {
               taskDiv.style.display = 'none';
             }
           }
           // Auto-navigate when index.html appears
           if (d.recentFiles && d.recentFiles.some(function(f) {
-            var name = f.split('/').pop();
-            return name === 'index.html';
+            return f.split('/').pop() === 'index.html';
           })) {
             window.location.href = '/';
             return;
           }
         })
-        .catch(function(){})
+        .catch(function() {})
         .finally(function() { setTimeout(poll, 1000); });
     })();
   </script>

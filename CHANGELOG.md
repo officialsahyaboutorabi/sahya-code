@@ -5,6 +5,12 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.5] - 2026-04-07
+
+### Changed
+
+- **Observatory page redesigned** — now uses SahyaGPT's full design system: SB Sans Text font, JetBrains Mono for paths/badges, `#0d0d0d` background, `#ff4f00` orange accent, glassmorphism card with backdrop blur, animated starfield background, noise overlay, and all CSS variables matching SahyaGPT exactly
+
 ## [v2.14.4] - 2026-04-07
 
 ### Fixed

@@ -17,6 +17,7 @@ export namespace Observatory {
     recentFiles: string[]
     lastFileChange?: number
     recording: RecordingEvent[]
+    projectDir?: string
   }
 
   let currentState: State = {
@@ -26,6 +27,7 @@ export namespace Observatory {
     enabled: false,
     recentFiles: [],
     recording: [],
+    projectDir: undefined,
   }
 
   // Listeners notified whenever a file is written/edited by the LLM
@@ -109,6 +111,11 @@ export namespace Observatory {
       enabled: currentState.enabled,
       recentFiles: [],
       recording: [],
+      projectDir: currentState.projectDir,
     }
+  }
+
+  export function updateProjectDir(dir: string) {
+    currentState.projectDir = dir
   }
 }

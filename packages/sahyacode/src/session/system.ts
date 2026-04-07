@@ -15,6 +15,8 @@ import type { Provider } from "@/provider/provider"
 import type { Agent } from "@/agent/agent"
 import { Permission } from "@/permission"
 import { Skill } from "@/skill"
+import { buildMemoryBlock } from "@/memory/inject"
+import { Global } from "@/global"
 
 export namespace SystemPrompt {
   export function provider(model: Provider.Model) {
@@ -72,5 +74,14 @@ export namespace SystemPrompt {
       // version of them here and a less verbose version in tool description, rather than vice versa.
       Skill.fmt(list, { verbose: true }),
     ].join("\n")
+  }
+
+  /**
+   * Returns a <memory> block with project-specific memories, or undefined if
+   * there are no stored memories for the current project directory.
+   */
+  export async function memory(): Promise<string | undefined> {
+    const block = await buildMemoryBlock(Instance.directory, Global.Path.data).catch(() => "")
+    return block || undefined
   }
 }

@@ -13,23 +13,78 @@ export const LIVE_VIEW_DIR = path.join(Global.Path.data, "live-view")
 
 const LIVE_RELOAD_SCRIPT = `<script>
 (function() {
-  var es = new EventSource('/~observatory/events');
-  es.onmessage = function(e) {
-    try {
-      var msg = JSON.parse(e.data);
-      if (msg.type === 'reload') {
-        console.log('[Observatory] reloading – file changed:', msg.file);
-        // If we're on the waiting/status page and index.html just appeared, navigate to it
-        var changedName = (msg.file || '').split('/').pop();
-        if (changedName === 'index.html' && window.location.pathname === '/') {
-          window.location.reload();
-          return;
+  var es = null;
+  var reconnectTimer = null;
+  var reconnectAttempts = 0;
+  var MAX_RECONNECT_ATTEMPTS = 10;
+  var RECONNECT_DELAY = 1000;
+  
+  function connect() {
+    if (es) {
+      try { es.close(); } catch(_) {}
+    }
+    
+    es = new EventSource('/~observatory/events');
+    
+    es.onopen = function() {
+      console.log('[Observatory] SSE connected');
+      reconnectAttempts = 0;
+    };
+    
+    es.onmessage = function(e) {
+      try {
+        var msg = JSON.parse(e.data);
+        if (msg.type === 'reload') {
+          console.log('[Observatory] reloading – file changed:', msg.file);
+          // If we're on the waiting/status page and index.html just appeared, navigate to it
+          var changedName = (msg.file || '').split('/').pop();
+          if (changedName === 'index.html' && window.location.pathname === '/') {
+            window.location.reload();
+            return;
+          }
+          location.reload();
         }
-        location.reload();
+      } catch(_) {}
+    };
+    
+    es.onerror = function(e) {
+      console.log('[Observatory] SSE error, will reconnect...');
+      if (es) {
+        try { es.close(); } catch(_) {}
+        es = null;
       }
-    } catch(_) {}
-  };
-  es.onerror = function() { setTimeout(function() { location.reload(); }, 2000); };
+      
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      
+      reconnectAttempts++;
+      if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+        console.log('[Observatory] Max reconnect attempts reached, falling back to polling');
+        return;
+      }
+      
+      // Exponential backoff with jitter
+      var delay = Math.min(RECONNECT_DELAY * Math.pow(1.5, reconnectAttempts - 1), 30000);
+      delay = delay + (Math.random() * 1000);
+      
+      reconnectTimer = setTimeout(function() {
+        connect();
+      }, delay);
+    };
+  }
+  
+  connect();
+  
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', function() {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+    }
+    if (es) {
+      try { es.close(); } catch(_) {}
+    }
+  });
 })();
 </script>`
 
@@ -701,7 +756,7 @@ function statusPage(projectDir: string): string {
     <div class="dir">${LIVE_VIEW_DIR}</div>
 
     <div class="label">Project directory</div>
-    <div class="proj-dir">${projectDir}</div>
+    <div class="proj-dir" id="project-dir">${projectDir}</div>
 
     <div class="label">Files written by the LLM</div>
     <ul id="files">${fileItems}</ul>
@@ -725,6 +780,9 @@ function statusPage(projectDir: string): string {
   ${LIVE_RELOAD_SCRIPT}
 
   <script>
+    // ── Dynamic project directory (updated from status) ───────────────────────
+    var currentProjectDir = ${JSON.stringify(projectDir)};
+    
     // ── Move to original location ─────────────────────────────────────────────
     document.getElementById('move-btn').addEventListener('click', function() {
       var btn = this;
@@ -733,7 +791,7 @@ function statusPage(projectDir: string): string {
       fetch('/~observatory/move-to', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: ${JSON.stringify(projectDir)} })
+        body: JSON.stringify({ target: currentProjectDir })
       })
         .then(function(r) { return r.json(); })
         .then(function(d) {
@@ -790,6 +848,14 @@ function statusPage(projectDir: string): string {
       fetch('/~observatory/status')
         .then(function(r) { return r.json(); })
         .then(function(d) {
+          // Update project directory dynamically
+          if (d.projectDir) {
+            currentProjectDir = d.projectDir;
+            var projDirEl = document.getElementById('project-dir');
+            if (projDirEl && projDirEl.textContent !== d.projectDir) {
+              projDirEl.textContent = d.projectDir;
+            }
+          }
           // Update file list
           var ul = document.getElementById('files');
           if (ul && d.recentFiles && d.recentFiles.length > 0) {
@@ -883,16 +949,44 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "Access-Control-Allow-Origin": "*",
+            "X-Accel-Buffering": "no", // Disable nginx buffering
           })
           res.write(": connected\n\n")
           sseClients.add(res)
-          req.on("close", () => sseClients.delete(res))
+          
+          // Heartbeat to keep connection alive (every 15 seconds for better reliability)
+          const heartbeat = setInterval(() => {
+            try {
+              res.write(": ping\n\n")
+            } catch {
+              clearInterval(heartbeat)
+              sseClients.delete(res)
+            }
+          }, 15000)
+          
+          const cleanup = () => {
+            clearInterval(heartbeat)
+            sseClients.delete(res)
+          }
+          
+          req.on("close", cleanup)
+          req.on("error", cleanup)
+          res.on("close", cleanup)
+          res.on("error", cleanup)
+          req.on("aborted", cleanup)
           return
         }
 
         if (url === "/~observatory/status") {
+          const state = Observatory.getState()
+          // Include the initial workDir as fallback if projectDir not set yet
+          const statusWithDir = {
+            ...state,
+            projectDir: state.projectDir || workDir,
+            liveViewDir: LIVE_VIEW_DIR,
+          }
           res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
-          res.end(JSON.stringify(Observatory.getState()))
+          res.end(JSON.stringify(statusWithDir))
           return
         }
 

@@ -41,7 +41,11 @@ export function captureFileWrite(file: string, content?: string, projectDir?: st
   Observatory.addThought(msg)
   Observatory.notifyFileChanged(file)
 
-  const relPath = path.relative(projectDir || process.cwd(), file)
+  // Update the project directory dynamically
+  const effectiveProjectDir = projectDir || process.cwd()
+  Observatory.updateProjectDir(effectiveProjectDir)
+
+  const relPath = path.relative(effectiveProjectDir, file)
 
   // Mirror file to ~/live-view/ asynchronously
   const destPath = path.join(LIVE_VIEW_DIR, relPath)

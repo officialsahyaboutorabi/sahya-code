@@ -172,7 +172,7 @@ async function callLLM(prompt: string): Promise<string> {
   const { text } = await generateText({
     model,
     prompt,
-    maxTokens: 4096,
+    maxOutputTokens: 4096,
   })
   return text
 }

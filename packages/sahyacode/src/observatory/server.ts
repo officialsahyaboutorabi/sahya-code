@@ -543,7 +543,10 @@ function replayPage(): string {
 </html>`
 }
 
+let currentWorkDir: string = ""
+
 function statusPage(projectDir: string): string {
+  currentWorkDir = projectDir
   const s = Observatory.getState()
   const fileItems = s.recentFiles.length > 0
     ? s.recentFiles.map(f => {
@@ -671,9 +674,24 @@ function statusPage(projectDir: string): string {
       background: var(--bg-primary); border: 1px solid var(--border);
       border-radius: 10px; padding: 10px 14px;
       font-family: 'JetBrains Mono', monospace; font-size: .82rem;
-      color: var(--text-secondary); margin-bottom: 24px;
+      color: var(--text-secondary); margin-bottom: 12px;
       word-break: break-all;
     }
+
+    /* Directory input */
+    .dir-input-wrap {
+      display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .dir-input {
+      flex: 1; min-width: 200px;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace; font-size: .82rem;
+      color: var(--text-primary);
+      outline: none;
+    }
+    .dir-input:focus { border-color: var(--accent); }
+    .dir-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
 
     /* Current task */
     #task { margin-bottom: 20px; }
@@ -758,6 +776,13 @@ function statusPage(projectDir: string): string {
     <div class="label">Project directory</div>
     <div class="proj-dir" id="project-dir">${projectDir}</div>
 
+    <div class="label">Set Working Directory</div>
+    <div class="dir-input-wrap">
+      <input type="text" class="dir-input" id="workdir-input" placeholder="Enter path to any directory..." value="${projectDir}" />
+      <button class="action-btn" id="set-workdir-btn">📂 Set Directory</button>
+    </div>
+    <div class="action-result" id="workdir-result"></div>
+
     <div class="label">Files written by the LLM</div>
     <ul id="files">${fileItems}</ul>
 
@@ -782,6 +807,57 @@ function statusPage(projectDir: string): string {
   <script>
     // ── Dynamic project directory (updated from status) ───────────────────────
     var currentProjectDir = ${JSON.stringify(projectDir)};
+    
+    // ── Set working directory ─────────────────────────────────────────────────
+    document.getElementById('set-workdir-btn').addEventListener('click', function() {
+      var input = document.getElementById('workdir-input');
+      var result = document.getElementById('workdir-result');
+      var btn = this;
+      var newDir = input.value.trim();
+      if (!newDir) {
+        result.style.display = 'block';
+        result.style.color = 'var(--error)';
+        result.textContent = 'Please enter a directory path';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '⏳ Setting...';
+      fetch('/~observatory/set-workdir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workDir: newDir })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          result.style.display = 'block';
+          if (d.success) {
+            result.style.color = 'var(--success)';
+            result.textContent = d.message || 'Working directory updated successfully';
+            currentProjectDir = newDir;
+            var projDirEl = document.getElementById('project-dir');
+            if (projDirEl) projDirEl.textContent = newDir;
+          } else {
+            result.style.color = 'var(--error)';
+            result.textContent = d.message || 'Failed to update working directory';
+          }
+          btn.disabled = false;
+          btn.textContent = '📂 Set Directory';
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = '📂 Set Directory';
+          result.style.display = 'block';
+          result.style.color = 'var(--error)';
+          result.textContent = 'Error: ' + String(err);
+        });
+    });
+    
+    // Allow Enter key to submit
+    document.getElementById('workdir-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('set-workdir-btn').click();
+      }
+    });
     
     // ── Move to original location ─────────────────────────────────────────────
     document.getElementById('move-btn').addEventListener('click', function() {
@@ -917,6 +993,9 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
     return Promise.resolve(`http://localhost:${activePort}`)
   }
 
+  // Initialize current working directory
+  currentWorkDir = workDir
+
   // Ensure live-view directory exists
   fs.mkdirSync(LIVE_VIEW_DIR, { recursive: true })
 
@@ -979,10 +1058,11 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
 
         if (url === "/~observatory/status") {
           const state = Observatory.getState()
-          // Include the initial workDir as fallback if projectDir not set yet
+          // Use the current working directory (which may have been updated via API)
+          const effectiveWorkDir = currentWorkDir || workDir
           const statusWithDir = {
             ...state,
-            projectDir: state.projectDir || workDir,
+            projectDir: state.projectDir || effectiveWorkDir,
             liveViewDir: LIVE_VIEW_DIR,
           }
           res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
@@ -1016,7 +1096,7 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
           req.on("end", async () => {
             try {
               const parsed = JSON.parse(body) as { target?: string }
-              const target = parsed.target || workDir
+              const target = parsed.target || currentWorkDir
 
               // Collect all files from LIVE_VIEW_DIR recursively, excluding .sahya-replay.json
               const getAllFiles = async (dir: string): Promise<string[]> => {
@@ -1051,6 +1131,50 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
           return
         }
 
+        if (url === "/~observatory/set-workdir" && method === "POST") {
+          let body = ""
+          req.on("data", (chunk) => { body += chunk.toString() })
+          req.on("end", async () => {
+            try {
+              const parsed = JSON.parse(body) as { workDir?: string }
+              const newWorkDir = parsed.workDir
+
+              if (!newWorkDir) {
+                res.writeHead(400, { "Content-Type": "application/json" })
+                res.end(JSON.stringify({ success: false, message: "No working directory provided" }))
+                return
+              }
+
+              // Validate the directory exists
+              try {
+                const stats = await fs.promises.stat(newWorkDir)
+                if (!stats.isDirectory()) {
+                  res.writeHead(400, { "Content-Type": "application/json" })
+                  res.end(JSON.stringify({ success: false, message: "Path is not a directory" }))
+                  return
+                }
+              } catch (err) {
+                res.writeHead(400, { "Content-Type": "application/json" })
+                res.end(JSON.stringify({ success: false, message: "Directory does not exist or is not accessible" }))
+                return
+              }
+
+              // Update the current working directory
+              currentWorkDir = newWorkDir
+
+              // Update Observatory state
+              Observatory.updateProjectDir(newWorkDir)
+
+              res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
+              res.end(JSON.stringify({ success: true, message: `Working directory set to: ${newWorkDir}` }))
+            } catch (err) {
+              res.writeHead(500, { "Content-Type": "application/json" })
+              res.end(JSON.stringify({ success: false, message: String(err) }))
+            }
+          })
+          return
+        }
+
         // ── Serve project files from LIVE_VIEW_DIR ─────────────────────────
         const filePath = path.join(LIVE_VIEW_DIR, url === "/" ? "index.html" : url)
 
@@ -1059,7 +1183,7 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
             // No index.html yet — show the status/waiting page
             if (url === "/" || url === "/index.html") {
               res.writeHead(200, { "Content-Type": "text/html" })
-              res.end(statusPage(workDir))
+              res.end(statusPage(currentWorkDir || workDir))
               return
             }
             res.writeHead(404, { "Content-Type": "text/plain" })

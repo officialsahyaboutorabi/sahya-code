@@ -239,6 +239,17 @@ for (const item of targets) {
     },
   })
 
+  // Ad-hoc code-sign macOS binaries so macOS Taskgated doesn't kill them
+  if (item.os === "darwin") {
+    const binaryPath = `dist/${name}/bin/sahyacode`
+    try {
+      await $`codesign --sign - --force --preserve-metadata=entitlements ${binaryPath}`
+      console.log(`Signed ${name} (ad-hoc)`)
+    } catch (e) {
+      console.warn(`codesign failed for ${name} (non-fatal):`, e)
+    }
+  }
+
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
     const binaryPath = `dist/${name}/bin/sahyacode`

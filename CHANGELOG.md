@@ -5,6 +5,13 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.7] - 2026-04-07
+
+### Fixed
+
+- **macOS SIGKILL (Code Signature Invalid)** — macOS 26 Taskgated kills unsigned binaries. Build script now runs `codesign --sign - --force` on every darwin binary automatically after compilation. All future releases will be ad-hoc signed.
+- **`/upgrade` shows `[object Object]` on failure** — the route was returning HTTP 500 for upgrade failures; the SDK client routes non-2xx bodies into `result.error` (a raw object), not `result.data`, so `String(result.error)` → `"[object Object]"`. Route now always returns HTTP 200 with `{ success, error? }` in the body, so `result.data` always carries the message.
+
 ## [v2.14.6] - 2026-04-07
 
 ### Added

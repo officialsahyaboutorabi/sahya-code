@@ -305,9 +305,11 @@ export const GlobalRoutes = lazy(() =>
               properties: { version: target },
             },
           })
-          return c.json(result)
         }
-        return c.json(result, 500)
+        // Always return 200 — the SDK client only puts the body in result.data
+        // for 2xx responses; non-2xx ends up in result.error as a raw object,
+        // making error message extraction unreliable.
+        return c.json(result)
       },
     ),
 )

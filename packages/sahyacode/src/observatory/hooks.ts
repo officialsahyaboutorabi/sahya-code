@@ -1,12 +1,12 @@
 import fs from "fs"
 import path from "path"
-import os from "os"
 import { Observatory } from "./index"
 import { Log } from "../util/log"
+import { Global } from "@/global"
 
 const log = Log.create({ service: "observatory.hooks" })
 
-const LIVE_VIEW_DIR = path.join(os.homedir(), "live-view")
+const LIVE_VIEW_DIR = path.join(Global.Path.data, "live-view")
 
 export function captureThought(thought: string) {
   if (!Observatory.isEnabled()) return

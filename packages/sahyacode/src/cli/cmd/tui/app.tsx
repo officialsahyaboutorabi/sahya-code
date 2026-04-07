@@ -663,14 +663,16 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
             if (result.error || !result.data?.success) {
               const msg =
                 (result.data as any)?.error ||
-                (result.error instanceof Error ? result.error.message : String(result.error)) ||
+                (result.error instanceof Error ? result.error.message : (result.error != null ? String(result.error) : "")) ||
                 "Upgrade failed"
               toast.show({ variant: "error", title: "Upgrade Failed", message: msg, duration: 8000 })
               return
             }
+            // Strip any 'v' prefix from version before adding our own, to avoid "vv2.14.8"
+            const ver = result.data.version.replace(/^v/, "")
             toast.show({
               variant: "success",
-              message: `✅ Upgraded to v${result.data.version}! Please restart SahyaCode.`,
+              message: `✅ Upgraded to v${ver}! Please restart SahyaCode.`,
               duration: 12000,
             })
           })
@@ -694,14 +696,14 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
       onSelect: () => {
         dialog.clear()
-        // Prefer the SDK directory (actual project directory), then Instance.worktree,
-        // then process.cwd() as last resort. Instance.worktree throws outside ALS context.
-        let workDir: string = sdk.directory || process.cwd()
-        try {
-          workDir = Instance.worktree || workDir
-        } catch {
-          // Instance context not available — workDir already set above
-        }
+        // Use the live path from the sync store — this is what the server actually
+        // reports as the active project directory (worktree or cwd).
+        // Fall back through sdk.directory → process.cwd() only if not yet synced.
+        let workDir: string =
+          sync.data.path.worktree ||
+          sync.data.path.directory ||
+          sdk.directory ||
+          process.cwd()
         if (ObservatoryServer.isRunning()) {
           const url = ObservatoryServer.getUrl()!
           open(url).catch(() => {})

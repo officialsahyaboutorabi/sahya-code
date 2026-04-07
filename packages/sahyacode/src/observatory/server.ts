@@ -1,15 +1,15 @@
 import http from "http"
 import fs from "fs"
 import path from "path"
-import os from "os"
 import { Observatory } from "./index"
 import { Log } from "../util/log"
+import { Global } from "@/global"
 
 const log = Log.create({ service: "observatory.server" })
 
 const sseClients = new Set<http.ServerResponse>()
 
-export const LIVE_VIEW_DIR = path.join(os.homedir(), "live-view")
+export const LIVE_VIEW_DIR = path.join(Global.Path.data, "live-view")
 
 const LIVE_RELOAD_SCRIPT = `<script>
 (function() {

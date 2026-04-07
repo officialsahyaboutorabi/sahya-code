@@ -8,6 +8,7 @@ import { GlobalBus } from "@/bus/global"
 import { AsyncQueue } from "@/util/queue"
 import { Instance } from "../../project/instance"
 import { Installation } from "@/installation"
+import semver from "semver"
 import { Log } from "../../util/log"
 import { lazy } from "../../util/lazy"
 import { Config } from "../../config/config"
@@ -294,9 +295,33 @@ export const GlobalRoutes = lazy(() =>
           method = "curl"
         }
         const target = c.req.valid("json").target || (await Installation.latest(method))
+
+        // Strip 'v' prefix for semver comparison
+        const currentVersion = Installation.VERSION.replace(/^v/, "")
+        const targetVersion = target.replace(/^v/, "")
+        if (currentVersion === targetVersion) {
+          return c.json({ success: false as const, error: `v${targetVersion} is already installed — no upgrade needed` })
+        }
+        // Guard against downgrade: if running a NEWER version than what version.txt reports,
+        // the release hasn't been published yet. Refuse rather than 404-ing the install script.
+        if (semver.gt(currentVersion, targetVersion)) {
+          return c.json({ success: false as const, error: `Already on v${currentVersion} which is newer than v${targetVersion} — no downgrade needed` })
+        }
+
         const result = await Installation.upgrade(method, target)
           .then(() => ({ success: true as const, version: target }))
-          .catch((e) => ({ success: false as const, error: e instanceof Error ? e.message : String(e) }))
+          .catch((e) => {
+            // Effect's TaggedErrorClass has an empty .message; extract .stderr directly.
+            let errorMsg: string
+            if (e instanceof Installation.UpgradeFailedError) {
+              errorMsg = e.stderr || "Upgrade process failed (no details)"
+            } else if (e instanceof Error) {
+              errorMsg = e.message || "Upgrade failed"
+            } else {
+              errorMsg = String(e) || "Upgrade failed"
+            }
+            return { success: false as const, error: errorMsg }
+          })
         if (result.success) {
           GlobalBus.emit("event", {
             directory: "global",

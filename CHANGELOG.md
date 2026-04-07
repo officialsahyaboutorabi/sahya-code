@@ -5,6 +5,33 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.11] - 2026-04-07
+
+### Fixed
+
+- **`zsh: killed sahyacode` returns on macOS 26** — ad-hoc signing without entitlements is insufficient on macOS 26.3+. Even though the binary had a valid ad-hoc signature, Taskgated kills it because Bun/JavaScriptCore needs JIT (`com.apple.security.cs.allow-jit`) which requires Hardened Runtime (`--options runtime`) to be active. Build script now writes a temporary entitlements plist (identical to what the bun binary itself uses) and signs with `codesign --sign - --force --options runtime --entitlements`. The five required entitlements are: `allow-jit`, `allow-unsigned-executable-memory`, `allow-dyld-environment-variables`, `disable-library-validation`, `disable-executable-page-protection`.
+
+## [v2.14.10] - 2026-04-07
+
+### Fixed
+
+- **Observatory "Project directory" now shows the real project path** — the `/observe` handler was using `sdk.directory` (the directory sahyacode was launched from, e.g. `~`) instead of the live path from the sync store. It now uses `sync.data.path.worktree || sync.data.path.directory` — the same source `useDirectory()` uses for the status bar — so it always reflects the actual project the AI is coding in.
+
+## [v2.14.9] - 2026-04-07
+
+### Fixed
+
+- **`/upgrade` shows "Upgrade Failed undefined"** — Effect's `TaggedErrorClass` has an empty `.message` property; the route's catch was using `e.message` which returned `""` (falsy), causing the TUI to fall through to `String(result.error)` = `String(undefined)` = `"undefined"`. Route now explicitly checks `instanceof Installation.UpgradeFailedError` and reads `e.stderr` instead. Also added a guard in `app.tsx` so `result.error != null` before `String(result.error)` is called.
+- **`/upgrade` shows `vv2.14.8` (double v)** — `version.txt` returns `"v2.14.8"` and the success toast prepended another `"v"`. TUI now strips any leading `v` from `result.data.version` before formatting the toast.
+- **`/upgrade` silently re-runs install when already on latest** — route now compares `currentVersion === targetVersion` (after stripping `v` prefix) and returns a clear `{ success: false, error: "v2.14.X is already installed — no upgrade needed" }` message instead of running the install script.
+- **`version.txt` bumped to `v2.14.8`** — upgrade check was reporting `v2.14.7` as latest so `/upgrade` always saw "already installed".
+
+## [v2.14.8] - 2026-04-07
+
+### Fixed
+
+- **`~/live-view/` moved inside sahyacode's data directory** — `LIVE_VIEW_DIR` is now `Global.Path.data + "/live-view"` (e.g. `~/Library/Application Support/sahyacode/live-view/` on macOS) instead of `~/live-view/`. Both `observatory/hooks.ts` and `observatory/server.ts` updated; `import os from "os"` removed from both files.
+
 ## [v2.14.7] - 2026-04-07
 
 ### Fixed

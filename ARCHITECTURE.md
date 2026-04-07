@@ -396,8 +396,74 @@ mv "$EXTRACTED_DIR/bin/opencode" "$INSTALL_DIR/sahyacode"
 
 ---
 
+## Observatory (Live Preview)
+
+The Observatory is a live browser preview system that allows users to watch the LLM build projects in real-time.
+
+### Components
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     OBSERVATORY SYSTEM                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────┐  │
+│  │   TUI        │─────▶│  HTTP Server │─────▶│ Browser  │  │
+│  │   /observe   │      │  :3456       │      │          │  │
+│  └──────────────┘      └──────┬───────┘      └──────────┘  │
+│                               │                            │
+│                               ▼                            │
+│                      ┌─────────────────┐                   │
+│                      │  Live-View Dir  │                   │
+│                      │  ~/.local/share/│                   │
+│                      │  sahyacode/live │                   │
+│                      └─────────────────┘                   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `packages/sahyacode/src/observatory/server.ts` | HTTP server with SSE for live reload |
+| `packages/sahyacode/src/observatory/index.ts` | Observatory state management |
+| `packages/sahyacode/src/observatory/hooks.ts` | File write capture & mirroring |
+
+### Data Flow
+
+1. User runs `/observe` command
+2. `ObservatoryServer.start(workDir)` starts HTTP server on port 3456
+3. Browser opens to status page
+4. LLM writes files via tools
+5. `captureFileWrite()` mirrors files to `live-view/` and broadcasts SSE
+6. Browser auto-reloads on file changes
+
+### Connection Stability (v2.14.3)
+
+**Problem**: Firefox times out idle SSE connections (`NS_BINDING_ABORTED`)
+
+**Solution**:
+- Server heartbeat: Ping every 15 seconds
+- `X-Accel-Buffering: no` header
+- Client auto-reconnection with exponential backoff
+- Proper cleanup handlers for all connection events
+
+### Dynamic Project Directory (v2.14.3)
+
+**Problem**: Initial workDir becomes stale when user switches projects
+
+**Solution**:
+- `updateProjectDir()` called on every file write
+- Status endpoint returns current project directory
+- Status page updates display dynamically
+- "Move to Original Location" uses dynamic path
+
+---
+
 ## See Also
 
 - [CHANGELOG.md](./CHANGELOG.md) - Version history
 - [SAHYA_CHANGES.md](./SAHYA_CHANGES.md) - Rebranding details
 - [README.md](./README.md) - User documentation
+- [packages/sahyacode/src/observatory/ARCHITECTURE.md](./packages/sahyacode/src/observatory/ARCHITECTURE.md) - Detailed Observatory docs

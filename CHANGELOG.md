@@ -76,6 +76,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Observatory SSE connection stability** — fixes `NS_BINDING_ABORTED` error in Firefox:
+  - Server-side heartbeat ping every 15 seconds (was 30s) to keep connection alive
+  - Added `X-Accel-Buffering: no` header to prevent proxy buffering
+  - Added proper cleanup handlers for `req`/`res` close/error/aborted events
+  - Client-side auto-reconnection with exponential backoff (max 10 attempts)
+  
+- **Observatory dynamic project directory** — project directory is no longer static:
+  - `Observatory.updateProjectDir()` updates directory when files are written
+  - Status endpoint returns current `projectDir` with fallback to initial workDir
+  - Status page displays and updates project directory dynamically via polling
+  - "Move to Original Location" button uses the dynamic project directory
+
 - **`/observe` command now works** — fixed `Context.NotFound` crash caused by accessing `Instance.worktree` outside an active session context; now safely falls back to `process.cwd()`
 - **Mistral-format tool call repair** — when a model outputs tool calls using `<|tool_call_begin|>` tokens in the text stream, the repair handler now attempts to extract valid JSON from the tokens before falling back to the `invalid` tool display
 

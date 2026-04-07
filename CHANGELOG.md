@@ -5,6 +5,16 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.14.12] - 2026-04-07
+
+### Added
+
+- **Observatory skill** — `~/Library/Application Support/sahyacode/skills/observatory/SKILL.md` teaches the LLM the exact workflow for live observatory mode: write `index.html` first, build incrementally so each file triggers a browser reload, never write directly to the live-view directory, and inform the user about the "Move to Original Location" button and the `/~observatory/replay` animation when done.
+
+### Fixed
+
+- **`/upgrade` downgrade guard** — route now checks `semver.gt(currentVersion, targetVersion)` before calling the install script; if the running version is already newer than what `version.txt` reports it returns a clear message instead of attempting a 404 download.
+
 ## [v2.14.11] - 2026-04-07
 
 ### Fixed

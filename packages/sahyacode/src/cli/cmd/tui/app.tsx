@@ -926,14 +926,14 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     toast.show({
       variant: "info",
       title: "Update Available",
-      message: `SahyaCode ${version} is available. Press Ctrl+P and type /upgrade to update.`,
+      message: `SahyaCode ${version.startsWith("v") ? version : `v${version}`} is available. Press Ctrl+P and type /upgrade to update.`,
       duration: 10000,
     })
 
     const choice = await DialogConfirm.show(
       dialog,
       `Update Available`,
-      `A new release ${version} is available. Would you like to update now?`,
+      `A new release ${version.startsWith("v") ? version : `v${version}`} is available. Would you like to update now?`,
       "skip",
     )
 
@@ -946,7 +946,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
     toast.show({
       variant: "info",
-      message: `Updating to v${version}...`,
+      message: `Updating to ${version.startsWith("v") ? version : `v${version}`}...`,
       duration: 30000,
     })
 

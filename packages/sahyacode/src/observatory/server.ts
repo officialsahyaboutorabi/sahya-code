@@ -545,7 +545,7 @@ function replayPage(): string {
 
 let currentWorkDir: string = ""
 
-function statusPage(projectDir: string): string {
+function statusPage(projectDir: string, hasIndexHtml: boolean = false): string {
   currentWorkDir = projectDir
   const s = Observatory.getState()
   // Get files from current workDir for initial display
@@ -572,6 +572,20 @@ function statusPage(projectDir: string): string {
         return `<li><span class="badge">${ext}</span><span class="file-name">${name}</span></li>`
       }).join("")
     : `<li class="empty">No files in this directory</li>`
+  
+  // Preview iframe - shows the actual website when index.html exists
+  const previewSection = hasIndexHtml ? `
+    <div class="label">Live Preview</div>
+    <div class="preview-container" style="margin-bottom: 20px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg-primary);">
+      <iframe id="preview-frame" src="/~observatory/preview" style="width: 100%; height: 400px; border: none; display: block;"></iframe>
+      <div class="preview-toolbar" style="display: flex; gap: 10px; padding: 10px 14px; background: var(--bg-card); border-top: 1px solid var(--border);">
+        <button class="action-btn" onclick="document.getElementById('preview-frame').src='/~observatory/preview'">🔄 Refresh</button>
+        <button class="action-btn" onclick="const f=document.getElementById('preview-frame'); f.style.height=(parseInt(f.style.height)+100)+'px'">➕ Larger</button>
+        <button class="action-btn" onclick="const f=document.getElementById('preview-frame'); f.style.height=Math.max(200,parseInt(f.style.height)-100)+'px'">➖ Smaller</button>
+        <a href="/~observatory/preview" target="_blank" class="action-btn" style="margin-left: auto;">↗️ Open in New Tab</a>
+      </div>
+    </div>
+  ` : ''
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -856,6 +870,8 @@ function statusPage(projectDir: string): string {
     </div>
     <div class="action-result" id="workdir-result"></div>
 
+    ${previewSection}
+
     <div class="label">Files written by the LLM</div>
     <ul id="files">${fileItems}</ul>
 
@@ -870,8 +886,9 @@ function statusPage(projectDir: string): string {
     <div class="divider"></div>
 
     <p class="hint">
-      This page updates live as files are written. It will automatically navigate
-      to the project once <code>index.html</code> is ready.
+      This page updates live as files are written. The preview above shows your website
+      in real-time as the AI builds it. Use the replay button to watch the construction
+      process again.
     </p>
   </div>
 
@@ -1457,16 +1474,42 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
         // ── Serve project files from LIVE_VIEW_DIR ─────────────────────────
         const filePath = path.join(LIVE_VIEW_DIR, url === "/" ? "index.html" : url)
 
+        // Special handler for preview iframe - serves raw index.html without status page wrapper
+        if (url === "/~observatory/preview") {
+          const indexPath = path.join(LIVE_VIEW_DIR, "index.html")
+          fs.readFile(indexPath, (err, data) => {
+            if (err) {
+              res.writeHead(404, { "Content-Type": "text/html" })
+              res.end("<html><body style='background:#0d0d0d;color:#888;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;'>No index.html yet</body></html>")
+              return
+            }
+            let html = data.toString("utf8")
+            html = html.includes("</body>")
+              ? html.replace("</body>", `${LIVE_RELOAD_SCRIPT}</body>`)
+              : html + LIVE_RELOAD_SCRIPT
+            res.writeHead(200, { "Content-Type": "text/html" })
+            res.end(html)
+          })
+          return
+        }
+
         fs.readFile(filePath, (err, data) => {
           if (err) {
             // No index.html yet — show the status/waiting page
             if (url === "/" || url === "/index.html") {
               res.writeHead(200, { "Content-Type": "text/html" })
-              res.end(statusPage(currentWorkDir || workDir))
+              res.end(statusPage(currentWorkDir || workDir, false))
               return
             }
             res.writeHead(404, { "Content-Type": "text/plain" })
             res.end("Not found")
+            return
+          }
+
+          // If requesting root and index.html exists, show status page with preview iframe
+          if (url === "/" || url === "/index.html") {
+            res.writeHead(200, { "Content-Type": "text/html" })
+            res.end(statusPage(currentWorkDir || workDir, true))
             return
           }
 

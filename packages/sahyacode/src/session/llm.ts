@@ -294,6 +294,56 @@ export namespace LLM {
             return { ...failed.toolCall, input: stripped }
           } catch {}
         }
+        // Try to repair truncated JSON (common with LiteLLM and long content)
+        if (failed.error.message?.includes("JSON") || failed.error.message?.includes("Unexpected end") || failed.error.message?.includes("Unterminated")) {
+          try {
+            // Attempt to repair truncated JSON by adding closing braces/brackets
+            let repaired = rawInput
+            // Count opening and closing braces
+            const openBraces = (repaired.match(/\{/g) || []).length
+            const closeBraces = (repaired.match(/\}/g) || []).length
+            const openBrackets = (repaired.match(/\[/g) || []).length
+            const closeBrackets = (repaired.match(/\]/g) || []).length
+            // Add missing closing braces/brackets
+            for (let i = 0; i < openBraces - closeBraces; i++) {
+              repaired += "}"
+            }
+            for (let i = 0; i < openBrackets - closeBrackets; i++) {
+              repaired += "]"
+            }
+            // Try to parse the repaired JSON
+            const parsed = JSON.parse(repaired)
+            l.info("repaired truncated JSON tool call", { tool: failed.toolCall.toolName, addedBraces: openBraces - closeBraces })
+            return { ...failed.toolCall, input: repaired }
+          } catch {}
+          // If that didn't work, try to extract partial content for write/edit tools
+          if (failed.toolCall.toolName === "write" || failed.toolCall.toolName === "edit") {
+            try {
+              // Extract filePath using regex
+              const filePathMatch = rawInput.match(/"filePath"\s*:\s*"([^"]+)"/)
+              const filePath = filePathMatch ? filePathMatch[1] : null
+              // Extract partial content
+              const contentMatch = rawInput.match(/"content"\s*:\s*"([\s\S]*)$/)
+              if (filePath && contentMatch) {
+                let partialContent = contentMatch[1]
+                // Remove trailing escape sequences and incomplete characters
+                partialContent = partialContent.replace(/\\$/g, "")
+                partialContent = partialContent.replace(/\\n$/g, "")
+                // If it starts with a quote, it was never properly opened
+                if (partialContent.startsWith('"')) {
+                  partialContent = partialContent.slice(1)
+                }
+                // Try to close the string properly
+                if (!partialContent.endsWith('"')) {
+                  partialContent += '"'
+                }
+                const repairedObj = { filePath, content: partialContent }
+                l.info("repaired partial write/edit tool call", { tool: failed.toolCall.toolName, filePath })
+                return { ...failed.toolCall, input: JSON.stringify(repairedObj) }
+              }
+            } catch {}
+          }
+        }
         return {
           ...failed.toolCall,
           input: JSON.stringify({

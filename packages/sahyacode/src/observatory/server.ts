@@ -1000,7 +1000,14 @@ function statusPage(projectDir: string): string {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workDir: browserCurrentPath })
       })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+          if (!r.ok) {
+            return r.text().then(function(text) {
+              throw new Error(text || 'Server returned ' + r.status);
+            });
+          }
+          return r.json();
+        })
         .then(function(d) {
           result.style.display = 'block';
           if (d.success) {
@@ -1350,6 +1357,17 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
           return
         }
 
+        // Handle CORS preflight
+        if (method === "OPTIONS") {
+          res.writeHead(204, {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          })
+          res.end()
+          return
+        }
+
         if (url === "/~observatory/set-workdir" && method === "POST") {
           let body = ""
           req.on("data", (chunk) => { body += chunk.toString() })
@@ -1359,7 +1377,7 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
               const newWorkDir = parsed.workDir
 
               if (!newWorkDir) {
-                res.writeHead(400, { "Content-Type": "application/json" })
+                res.writeHead(400, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
                 res.end(JSON.stringify({ success: false, message: "No working directory provided" }))
                 return
               }
@@ -1368,12 +1386,12 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
               try {
                 const stats = await fs.promises.stat(newWorkDir)
                 if (!stats.isDirectory()) {
-                  res.writeHead(400, { "Content-Type": "application/json" })
+                  res.writeHead(400, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
                   res.end(JSON.stringify({ success: false, message: "Path is not a directory" }))
                   return
                 }
               } catch (err) {
-                res.writeHead(400, { "Content-Type": "application/json" })
+                res.writeHead(400, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
                 res.end(JSON.stringify({ success: false, message: "Directory does not exist or is not accessible" }))
                 return
               }
@@ -1387,7 +1405,7 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
               res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
               res.end(JSON.stringify({ success: true, message: `Working directory set to: ${newWorkDir}` }))
             } catch (err) {
-              res.writeHead(500, { "Content-Type": "application/json" })
+              res.writeHead(500, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
               res.end(JSON.stringify({ success: false, message: String(err) }))
             }
           })

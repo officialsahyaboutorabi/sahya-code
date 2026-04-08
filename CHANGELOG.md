@@ -5,6 +5,16 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.16.2] - 2026-04-08
+
+### Fixed
+
+- **LiteLLM model discovery** — Fixed models not showing after entering URL and API key. The `discoverModels` function is now properly called for litellm provider (like gitlab), fetching available models from the `/models` endpoint after authentication.
+
+### Changed
+
+- Added debug logging to LiteLLM provider for troubleshooting model fetching
+
 ## [v2.16.1] - 2026-04-08
 
 ### Fixed

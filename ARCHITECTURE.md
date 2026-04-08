@@ -271,6 +271,18 @@ User selects "LiteLLM (Custom)" in TUI
 └──────────────────────┘
 ```
 
+### Discovery Loaders
+
+Providers that support dynamic model discovery (fetching available models at runtime):
+
+| Provider | Discovery Endpoint | Description |
+|----------|-------------------|-------------|
+| **gitlab** | GitLab AI API | Discovers models from GitLab Duo |
+| **litellm** | `/models` | Fetches from LiteLLM's /models endpoint |
+| **nexiant** | `/models` | Fetches from Nexiant LLM endpoint |
+
+Discovery runs after auth is saved, populating the model list dynamically.
+
 ---
 
 ## Build Process

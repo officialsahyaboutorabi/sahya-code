@@ -106,8 +106,11 @@ const cli = yargs(hideBin(process.argv))
       args: process.argv.slice(2),
     })
 
+    // Skip database migration for upgrade command since it will replace the binary
+    const isUpgradeCommand = process.argv.slice(2)[0] === "upgrade"
+    
     const marker = path.join(Global.Path.data, "sahyacode.db")
-    if (!(await Filesystem.exists(marker))) {
+    if (!isUpgradeCommand && !(await Filesystem.exists(marker))) {
       const tty = process.stderr.isTTY
       process.stderr.write("Performing one time database migration, may take a few minutes..." + EOL)
       const width = 36

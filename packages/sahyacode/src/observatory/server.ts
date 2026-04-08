@@ -1346,7 +1346,7 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
           return
         }
 
-        if (url === "/~observatory/browse" && method === "GET") {
+        if (url.startsWith("/~observatory/browse") && method === "GET") {
           (async () => {
             try {
               const urlObj = new URL(req.url || "/", `http://${req.headers.host}`)

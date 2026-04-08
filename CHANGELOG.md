@@ -5,6 +5,24 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.16.3] - 2026-04-08
+
+### Added
+
+- **Observatory Live Preview** — Status page now shows live iframe preview of website:
+  - Preview iframe renders website in real-time as AI builds it
+  - Refresh button to reload preview
+  - Resize controls (larger/smaller)
+  - Open in new tab for full-screen viewing
+  - Served from /~observatory/preview endpoint
+
+### Fixed
+
+- **LiteLLM JSON truncation** — Fixed JSON parsing errors with long content:
+  - Added repair logic for truncated JSON tool calls
+  - Auto-adds missing closing braces/brackets
+  - Special handling for write/edit tools with partial content
+
 ## [v2.16.2] - 2026-04-08
 
 ### Fixed

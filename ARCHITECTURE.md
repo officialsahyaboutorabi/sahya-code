@@ -18,9 +18,11 @@ This document describes the architecture of Sahya Code, focusing on the installa
 Sahya Code is a terminal-based AI coding agent. The architecture consists of:
 
 - **CLI Application** (`packages/sahyacode/`): Main TypeScript/Bun application
-- **Install Script** (`sahyagpt/install.sh`): curl-based installer hosted at sbgpt.qzz.io
+- **Web UI** (`packages/app/`): React-based web interface
+- **Install Script** (`install.sh`): curl-based installer hosted at sbgpt.qzz.io
 - **Version Tracking** (`version.txt`): Single source of truth for current version
 - **GitHub Releases**: Binary distribution via GitHub releases
+- **Provider System**: Pluggable AI provider architecture with 100+ supported providers
 
 ---
 
@@ -59,9 +61,25 @@ Sahya Code is a terminal-based AI coding agent. The architecture consists of:
 
 ### Version Format
 
-- **version.txt**: `v2.13.4` (with 'v' prefix)
-- **Binary**: `2.13.4` (without 'v' prefix, or `0.0.0-main-*` if not set)
-- **GitHub Releases**: `v2.13.4` (tag)
+| Source | Format | Example |
+|--------|--------|---------|
+| **version.txt** | Plain version | `2.16.1` |
+| **Git Tag** | With 'v' prefix | `v2.16.1` |
+| **Binary** | With 'v' prefix | `v2.16.1` |
+| **NPM** | Plain version | `2.16.1` |
+
+### Critical Build Environment Variables
+
+```bash
+# Required for proper version embedding
+export SAHYACODE_CHANNEL=latest      # Use 'latest' for releases, git branch for dev
+export SAHYACODE_VERSION=2.16.1      # Version to embed in binary
+
+# Build command
+bun run build
+```
+
+**Without these env vars**, the binary will report `v0.0.0-main-TIMESTAMP`.
 
 ---
 
@@ -151,16 +169,121 @@ sahyacode-darwin-arm64.tar.gz
 
 ---
 
+## Provider System
+
+### Architecture Overview
+
+The provider system supports 100+ AI providers through a unified interface:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PROVIDER SYSTEM                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────┐  │
+│  │  Models.dev  │─────▶│   Provider   │─────▶│   SDK    │  │
+│  │    API       │      │   Registry   │      │ Loaders  │  │
+│  └──────────────┘      └──────────────┘      └──────────┘  │
+│         │                      │                    │       │
+│         │                      ▼                    ▼       │
+│         │               ┌──────────────┐      ┌──────────┐  │
+│         │               │   Custom     │      │  Vercel  │  │
+│         │               │   Loaders    │      │  AI SDK  │  │
+│         │               │ (litellm,    │      │          │  │
+│         │               │  nexiant)    │      │          │  │
+│         │               └──────────────┘      └──────────┘  │
+│         │                      │                    │       │
+│         └──────────────────────┴────────────────────┘       │
+│                                 │                           │
+│                                 ▼                           │
+│                          ┌──────────────┐                   │
+│                          │  AI Models   │                   │
+│                          └──────────────┘                   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Provider Sources
+
+| Source | Description | Examples |
+|--------|-------------|----------|
+| **Models.dev API** | Centralized provider definitions | openai, anthropic, google, groq |
+| **Custom Loaders** | Provider-specific initialization | litellm, nexiant |
+| **Connected Providers** | User-configured custom endpoints | User's LiteLLM instances |
+
+### Adding a New Provider
+
+1. **For standard OpenAI-compatible APIs**: Add to `src/provider/models.ts` or configure via CLI
+2. **For custom behavior**: Add loader to `src/provider/provider.ts` `CUSTOM_LOADERS`
+
+### LiteLLM Provider (Custom Endpoint Example)
+
+```typescript
+// src/provider/provider.ts - CUSTOM_LOADERS.litellm
+litellm: async (input) => {
+  const config = await Config.get()
+  const auth = await Auth.get("litellm")
+  
+  // Read baseURL from auth first, then config/env
+  const baseURL = auth?.type === "api" && auth.baseURL
+    ? auth.baseURL
+    : config.provider?.["litellm"]?.options?.baseURL 
+      || Env.get("LITELLM_BASE_URL") 
+      || "https://llm.nexiant.ai"
+  
+  // Fetch available models from /models endpoint
+  const models = await fetch(`${baseURL}/models`, {...})
+  
+  return {
+    autoload: true,
+    options: { baseURL: `${baseURL}/v1`, apiKey },
+    getModel: (sdk, modelID) => sdk.languageModel(modelID),
+  }
+}
+```
+
+### Provider Auth Flow (TUI)
+
+```
+User selects "LiteLLM (Custom)" in TUI
+           │
+           ▼
+┌──────────────────────┐
+│ Prompt for baseURL   │ ← Required: endpoint URL
+│ (e.g., https://...)  │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Prompt for API Key   │ ← Optional
+│ (can be empty)       │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Save to Auth store   │ ← {type: "api", key, baseURL}
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Fetch models list    │ ← GET /models from endpoint
+│ Show model selector  │
+└──────────────────────┘
+```
+
+---
+
 ## Build Process
 
 ### Build Flow
 
 ```
-Environment: OPENCODE_VERSION="2.13.4"
+Environment: SAHYACODE_CHANNEL="latest"
+             SAHYACODE_VERSION="2.16.1"
                      │
                      ▼
 ┌─────────────────────────────────────────┐
-│ bun run script/build.ts --single        │
+│ bun run script/build.ts                 │
 └────────────────┬────────────────────────┘
                  │
     ┌────────────┼────────────┐
@@ -168,14 +291,15 @@ Environment: OPENCODE_VERSION="2.13.4"
     ▼            ▼            ▼
 ┌───────┐   ┌───────┐   ┌──────────┐
 │ Build │   │ Embed │   │ Package  │
-│  App  │   │Version│   │  tar.gz  │
+│  App  │   │Version│   │  .zip    │
 └───┬───┘   └───┬───┘   └────┬─────┘
     │           │            │
     └───────────┼────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────────┐
-│ dist/sahyacode-darwin-arm64/bin/opencode│
+│ dist/sahyacode-darwin-arm64/bin/        │
+│              sahyacode                  │
 └─────────────────────────────────────────┘
 ```
 
@@ -195,7 +319,8 @@ The version is embedded at **compile time** via `define`:
 // packages/sahyacode/script/build.ts
 Bun.build({
   define: {
-    OPENCODE_VERSION: `'${Script.version}'`,
+    SAHYACODE_VERSION: `'${Script.version}'`,
+    SAHYACODE_CHANNEL: `'${Script.channel}'`,
     // ...
   }
 })
@@ -205,13 +330,20 @@ Bun.build({
 
 ```typescript
 const VERSION = await (async () => {
+  if (env.SAHYACODE_VERSION) return env.SAHYACODE_VERSION
   if (env.OPENCODE_VERSION) return env.OPENCODE_VERSION
   if (IS_PREVIEW) return `0.0.0-${CHANNEL}-${TIMESTAMP}`
-  // ...
+  // Fallback to npm version + bump
+})()
+
+const CHANNEL = await (async () => {
+  if (env.SAHYACODE_CHANNEL) return env.SAHYACODE_CHANNEL
+  if (env.OPENCODE_CHANNEL) return env.OPENCODE_CHANNEL
+  return await git.branch.current()
 })()
 ```
 
-**Without `OPENCODE_VERSION` env var**, the binary will report `0.0.0-main-TIMESTAMP`.
+**Without `SAHYACODE_VERSION` env var**, the binary will report `v0.0.0-main-TIMESTAMP`.
 
 ---
 
@@ -306,29 +438,35 @@ const upgradeCurl = Effect.fnUntraced(function* (target: string) {
 ### Manual Release Steps
 
 ```bash
-# 1. Update version
-echo "v2.13.4" > version.txt
+# 1. Update version.txt (no 'v' prefix)
+echo "2.16.1" > version.txt
 git add version.txt
-git commit -m "chore: bump version to v2.13.4"
+git commit -m "chore: bump version to v2.16.1"
 
-# 2. Build with version
-export OPENCODE_VERSION="2.13.4"
+# 2. Build with proper env vars
+export SAHYACODE_CHANNEL="latest"
+export SAHYACODE_VERSION="2.16.1"
 cd packages/sahyacode
-bun run script/build.ts --single
+bun run build
 
-# 3. Package
-cd dist/sahyacode-darwin-arm64
-tar -czf ../../../sahyacode-darwin-arm64.tar.gz .
+# 3. Package all platforms
+cd dist
+for dir in sahyacode-*; do
+  zip -r "${dir}.zip" "$dir"
+done
 
-# 4. Tag and push
-git tag v2.13.4
-git push origin v2.13.4
+# 4. Tag and push (with 'v' prefix)
+git tag v2.16.1
+git push origin main v2.16.1
 
 # 5. Create release
-gh release create v2.13.4 \
-  --title "v2.13.4" \
+gh release create v2.16.1 \
+  --title "v2.16.1 - Description" \
   --notes "Release notes..." \
-  sahyacode-darwin-arm64.tar.gz
+  *.zip
+
+# 6. Upload install.sh to server
+scp install.sh user@sbgpt.qzz.io:/var/www/sbgpt/
 ```
 
 ### Automated Release (GitHub Actions)
@@ -341,11 +479,96 @@ The `.github/workflows/publish.yml` handles:
 
 ---
 
+## Observatory (Live Preview)
+
+### Overview
+
+The Observatory provides a live browser preview of the AI's work with hot-reload:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    OBSERVATORY SYSTEM                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────┐  │
+│  │   TUI / CLI  │─────▶│  HTTP Server │─────▶│ Browser  │  │
+│  │  /observe    │      │  :3456       │      │ Preview  │  │
+│  └──────────────┘      └──────┬───────┘      └──────────┘  │
+│                               │                             │
+│                               ▼                             │
+│                        ┌──────────────┐                     │
+│                        │  File Watch  │                     │
+│                        │  + SSE       │                     │
+│                        └──────────────┘                     │
+│                               │                             │
+│                               ▼                             │
+│                        ┌──────────────┐                     │
+│                        │ ~/live-view/ │                     │
+│                        │ (staging dir)│                     │
+│                        └──────────────┘                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Live Reload** | Browser auto-refreshes when files change (SSE) |
+| **File Recording** | All writes tracked in `.sahya-replay.json` |
+| **Move to Project** | Button to copy files from staging to actual project |
+| **Replay** | `/~observatory/replay` shows construction animation |
+| **Directory Browser** | Browse and select working directories |
+
+### File Flow
+
+```
+AI writes file via tool
+         │
+         ▼
+┌─────────────────┐
+│  Write/Edit Tool│
+│  (instrumented) │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐
+│ ~/live-view/    │────▶│ Browser Preview │
+│ (mirrored file) │     │ (auto-reloads)  │
+└─────────────────┘     └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ .sahya-replay   │
+│ (timestamped)   │
+└─────────────────┘
+```
+
+### Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /~observatory/status` | Current file list, project directory |
+| `POST /~observatory/move-to` | Copy files from staging to project |
+| `GET /~observatory/browse?path=` | Directory browser |
+| `POST /~observatory/set-workdir` | Change working directory |
+| `GET /~observatory/replay` | Construction replay page |
+| `GET /~observatory/events` | SSE stream for live updates |
+
+---
+
 ## Common Issues & Solutions
 
-### Issue: Binary shows `0.0.0-main-*`
+### Issue: Binary shows `v0.0.0-main-*`
 
-**Cause**: `OPENCODE_VERSION` env var not set during build
+**Cause**: `SAHYACODE_VERSION` and/or `SAHYACODE_CHANNEL` env vars not set during build
+
+**Solution**:
+```bash
+export SAHYACODE_CHANNEL=latest
+export SAHYACODE_VERSION=2.16.1
+bun run build
+```
 
 **Fix**:
 ```bash

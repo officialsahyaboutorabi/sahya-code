@@ -5,6 +5,75 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.16.1] - 2026-04-08
+
+### Fixed
+
+- **Install script binary detection** — Fixed install.sh not finding `sahyacode` binary in extracted directory. Now checks for both `bin/opencode` and `bin/sahyacode` in the extracted archive.
+- **Version showing as v0.0.0-main-...** — Build now correctly uses `SAHYACODE_CHANNEL=latest` and `SAHYACODE_VERSION` env vars to embed proper version in binaries.
+- **Double 'v' prefix in upgrade messages** — Install script and upgrade command now handle version strings with or without 'v' prefix consistently.
+
+### Added
+
+- **LiteLLM provider in TUI** — Users can now connect to custom OpenAI-compatible endpoints (like LiteLLM) directly from the TUI provider selection dialog:
+  - Added `litellm` to provider priority list with "(Custom OpenAI-compatible endpoint)" description
+  - Auth flow prompts for URL (required) and API key (optional)
+  - Added `baseURL` field to `Auth.Api` schema for storing custom endpoint URLs
+  - Provider loader reads baseURL from auth first, then falls back to config/env defaults
+
+## [v2.16.0] - 2026-04-08
+
+### Added
+
+- **LiteLLM provider backend support** — Full backend support for LiteLLM/custom OpenAI-compatible endpoints:
+  - New provider loader in `provider.ts` with auto-discovery of models from `/models` endpoint
+  - Support for baseURL configuration via config, env vars, or auth
+  - Default endpoint: `https://llm.nexiant.ai` (configurable)
+
+## [v2.15.9] - 2026-04-08
+
+### Fixed
+
+- **Install script binary path** — Fixed install.sh to look for binary in extracted directory structure (`sahyacode-*/bin/sahyacode`)
+
+## [v2.15.8] - 2026-04-08
+
+### Fixed
+
+- **Observatory browse endpoint** — Fixed path resolution issues for custom directories in directory browser
+
+## [v2.15.7] - 2026-04-08
+
+### Fixed
+
+- **Upgrade command interference** — Database migration no longer runs during upgrade command, preventing logo display from corrupting terminal output
+
+## [v2.15.6] - 2026-04-08
+
+### Fixed
+
+- **Version display in dev builds** — Fixed dev version showing (v0.0.0-main-...) by using `SAHYACODE_CHANNEL=latest`
+
+## [v2.15.5] - 2026-04-08
+
+### Fixed
+
+- **Double "v" prefix** — Fixed upgrade notification showing "vv2.15.x" instead of "v2.15.x"
+
+## [v2.15.4] - 2026-04-08
+
+### Added
+
+- **Custom provider CLI command** — New `sahyacode provider add` command for adding LiteLLM-compatible APIs via CLI
+
+## [v2.15.3] - 2026-04-08
+
+### Fixed
+
+- **Observatory browse endpoint 404** — Fixed URL matching to use `startsWith` instead of exact match for query params
+- **CORS headers** — Added proper CORS headers to all observatory responses
+- **JSON parse errors** — Added error handling for malformed JSON in observatory requests
+
 ## [v2.14.12] - 2026-04-07
 
 ### Added

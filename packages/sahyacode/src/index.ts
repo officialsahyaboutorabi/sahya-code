@@ -44,6 +44,7 @@ import { WorkflowCommand } from "./cli/cmd/workflow"
 // import { ObservatoryCommand } from "./cli/cmd/observatory"
 import { DiagramCommand } from "./cli/cmd/diagram"
 import { PairCommand } from "./cli/cmd/pair"
+import { CustomProviderCommand } from "./cli/cmd/custom-provider"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -174,6 +175,7 @@ const cli = yargs(hideBin(process.argv))
   .command(WorkflowCommand)
   .command(DiagramCommand)
   .command(PairCommand)
+  .command(CustomProviderCommand)
   // .command(AnalyzeCommand)
   // .command(ObservatoryCommand)
   .fail((msg, err) => {

@@ -678,20 +678,48 @@ function statusPage(projectDir: string): string {
       word-break: break-all;
     }
 
-    /* Directory input */
-    .dir-input-wrap {
-      display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
+    /* Directory browser */
+    .dir-browser {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 8px;
     }
-    .dir-input {
-      flex: 1; min-width: 200px;
-      background: var(--bg-primary); border: 1px solid var(--border);
-      border-radius: 10px; padding: 10px 14px;
-      font-family: 'JetBrains Mono', monospace; font-size: .82rem;
+    .dir-browser-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      color: var(--text-secondary);
+    }
+    .dir-browser-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .dir-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      font-size: .82rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background .15s, color .15s;
+    }
+    .dir-item:last-child { border-bottom: none; }
+    .dir-item:hover { 
+      background: var(--bg-hover); 
       color: var(--text-primary);
-      outline: none;
     }
-    .dir-input:focus { border-color: var(--accent); }
-    .dir-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+    .dir-item.folder::before { content: '📁'; }
+    .dir-item.file::before { content: '📄'; }
+    .dir-item.up::before { content: '🔙'; }
 
     /* Current task */
     #task { margin-bottom: 20px; }
@@ -777,9 +805,14 @@ function statusPage(projectDir: string): string {
     <div class="proj-dir" id="project-dir">${projectDir}</div>
 
     <div class="label">Set Working Directory</div>
-    <div class="dir-input-wrap">
-      <input type="text" class="dir-input" id="workdir-input" placeholder="Enter path to any directory..." value="${projectDir}" />
-      <button class="action-btn" id="set-workdir-btn">📂 Set Directory</button>
+    <div class="dir-browser" id="dir-browser">
+      <div class="dir-browser-header">
+        <span id="current-path">${projectDir}</span>
+        <button class="action-btn" id="select-dir-btn">✅ Select This Folder</button>
+      </div>
+      <div class="dir-browser-list" id="dir-list">
+        <div class="dir-item" data-path="..">🔙 ..</div>
+      </div>
     </div>
     <div class="action-result" id="workdir-result"></div>
 
@@ -808,24 +841,77 @@ function statusPage(projectDir: string): string {
     // ── Dynamic project directory (updated from status) ───────────────────────
     var currentProjectDir = ${JSON.stringify(projectDir)};
     
-    // ── Set working directory ─────────────────────────────────────────────────
-    document.getElementById('set-workdir-btn').addEventListener('click', function() {
-      var input = document.getElementById('workdir-input');
-      var result = document.getElementById('workdir-result');
+    // ── Directory Browser ────────────────────────────────────────────────────
+    var browserCurrentPath = currentProjectDir;
+    
+    function loadDirectory(path) {
+      var list = document.getElementById('dir-list');
+      var header = document.getElementById('current-path');
+      list.innerHTML = '<div class="dir-item">⏳ Loading...</div>';
+      
+      fetch('/~observatory/browse?path=' + encodeURIComponent(path))
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (!d.success) {
+            list.innerHTML = '<div class="dir-item" style="color:var(--error)">Error: ' + (d.message || 'Failed to load') + '</div>';
+            return;
+          }
+          browserCurrentPath = d.path;
+          header.textContent = d.path;
+          
+          var html = '';
+          // Add ".." entry if not at root
+          if (d.parent !== null) {
+            html += '<div class="dir-item up" data-path="' + d.parent + '">🔙 ..</div>';
+          }
+          // Add folders
+          if (d.folders && d.folders.length > 0) {
+            d.folders.forEach(function(folder) {
+              html += '<div class="dir-item folder" data-path="' + folder.path + '">' + folder.name + '</div>';
+            });
+          }
+          // Add files (disabled)
+          if (d.files && d.files.length > 0) {
+            d.files.slice(0, 20).forEach(function(file) {
+              html += '<div class="dir-item file" style="opacity:0.5;cursor:not-allowed">' + file.name + '</div>';
+            });
+            if (d.files.length > 20) {
+              html += '<div class="dir-item" style="opacity:0.5">... and ' + (d.files.length - 20) + ' more files</div>';
+            }
+          }
+          if (html === '') {
+            html = '<div class="dir-item" style="opacity:0.5">Empty directory</div>';
+          }
+          list.innerHTML = html;
+          
+          // Add click handlers
+          list.querySelectorAll('.dir-item:not(.file)').forEach(function(item) {
+            item.addEventListener('click', function() {
+              var newPath = this.dataset.path;
+              if (newPath) loadDirectory(newPath);
+            });
+          });
+        })
+        .catch(function(err) {
+          list.innerHTML = '<div class="dir-item" style="color:var(--error)">Error: ' + String(err) + '</div>';
+        });
+    }
+    
+    // Load initial directory
+    loadDirectory(browserCurrentPath);
+    
+    // Select directory button
+    document.getElementById('select-dir-btn').addEventListener('click', function() {
       var btn = this;
-      var newDir = input.value.trim();
-      if (!newDir) {
-        result.style.display = 'block';
-        result.style.color = 'var(--error)';
-        result.textContent = 'Please enter a directory path';
-        return;
-      }
+      var result = document.getElementById('workdir-result');
+      
       btn.disabled = true;
       btn.textContent = '⏳ Setting...';
+      
       fetch('/~observatory/set-workdir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workDir: newDir })
+        body: JSON.stringify({ workDir: browserCurrentPath })
       })
         .then(function(r) { return r.json(); })
         .then(function(d) {
@@ -833,30 +919,23 @@ function statusPage(projectDir: string): string {
           if (d.success) {
             result.style.color = 'var(--success)';
             result.textContent = d.message || 'Working directory updated successfully';
-            currentProjectDir = newDir;
+            currentProjectDir = browserCurrentPath;
             var projDirEl = document.getElementById('project-dir');
-            if (projDirEl) projDirEl.textContent = newDir;
+            if (projDirEl) projDirEl.textContent = browserCurrentPath;
           } else {
             result.style.color = 'var(--error)';
             result.textContent = d.message || 'Failed to update working directory';
           }
           btn.disabled = false;
-          btn.textContent = '📂 Set Directory';
+          btn.textContent = '✅ Select This Folder';
         })
         .catch(function(err) {
           btn.disabled = false;
-          btn.textContent = '📂 Set Directory';
+          btn.textContent = '✅ Select This Folder';
           result.style.display = 'block';
           result.style.color = 'var(--error)';
           result.textContent = 'Error: ' + String(err);
         });
-    });
-    
-    // Allow Enter key to submit
-    document.getElementById('workdir-input').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        document.getElementById('set-workdir-btn').click();
-      }
     });
     
     // ── Move to original location ─────────────────────────────────────────────
@@ -1128,6 +1207,59 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
               res.end(JSON.stringify({ success: false, message: String(err) }))
             }
           })
+          return
+        }
+
+        if (url === "/~observatory/browse" && method === "GET") {
+          (async () => {
+            const urlObj = new URL(req.url || "/", `http://${req.headers.host}`)
+            const browsePath = urlObj.searchParams.get("path") || currentWorkDir || workDir
+            
+            try {
+              // Resolve and validate path
+              const resolvedPath = path.resolve(browsePath)
+              const stats = await fs.promises.stat(resolvedPath)
+              
+              if (!stats.isDirectory()) {
+                res.writeHead(400, { "Content-Type": "application/json" })
+                res.end(JSON.stringify({ success: false, message: "Path is not a directory" }))
+                return
+              }
+
+              // Read directory contents
+              const entries = await fs.promises.readdir(resolvedPath, { withFileTypes: true })
+              
+              const folders: Array<{ name: string; path: string }> = []
+              const files: Array<{ name: string; path: string }> = []
+              
+              for (const entry of entries) {
+                const entryPath = path.join(resolvedPath, entry.name)
+                if (entry.isDirectory()) {
+                  folders.push({ name: entry.name, path: entryPath })
+                } else {
+                  files.push({ name: entry.name, path: entryPath })
+                }
+              }
+              
+              // Sort alphabetically
+              folders.sort((a, b) => a.name.localeCompare(b.name))
+              files.sort((a, b) => a.name.localeCompare(b.name))
+              
+              const parent = path.dirname(resolvedPath) === resolvedPath ? null : path.dirname(resolvedPath)
+              
+              res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
+              res.end(JSON.stringify({
+                success: true,
+                path: resolvedPath,
+                parent,
+                folders,
+                files,
+              }))
+            } catch (err) {
+              res.writeHead(500, { "Content-Type": "application/json" })
+              res.end(JSON.stringify({ success: false, message: String(err) }))
+            }
+          })()
           return
         }
 

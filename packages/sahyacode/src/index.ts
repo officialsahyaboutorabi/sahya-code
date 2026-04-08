@@ -36,8 +36,14 @@ import { Database } from "./storage/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
 import { ThemeCommand } from "./cli/cmd/theme"
+import { HealthCommand } from "./cli/cmd/health"
+import { PersonaCommand } from "./cli/cmd/persona"
+import { VoiceCommand } from "./cli/cmd/voice"
+import { WorkflowCommand } from "./cli/cmd/workflow"
 // import { AnalyzeCommand } from "./cli/cmd/analyze"
 // import { ObservatoryCommand } from "./cli/cmd/observatory"
+import { DiagramCommand } from "./cli/cmd/diagram"
+import { PairCommand } from "./cli/cmd/pair"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -162,6 +168,12 @@ const cli = yargs(hideBin(process.argv))
   .command(PluginCommand)
   .command(DbCommand)
   .command(ThemeCommand)
+  .command(HealthCommand)
+  .command(PersonaCommand)
+  .command(VoiceCommand)
+  .command(WorkflowCommand)
+  .command(DiagramCommand)
+  .command(PairCommand)
   // .command(AnalyzeCommand)
   // .command(ObservatoryCommand)
   .fail((msg, err) => {

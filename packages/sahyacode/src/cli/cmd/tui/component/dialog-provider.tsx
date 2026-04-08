@@ -21,6 +21,7 @@ const PROVIDER_PRIORITY: Record<string, number> = {
   "github-copilot": 3,
   anthropic: 4,
   google: 5,
+  litellm: 6,
 }
 
 export function createDialogProviderOptions() {
@@ -40,6 +41,7 @@ export function createDialogProviderOptions() {
           anthropic: "(API key)",
           openai: "(ChatGPT Plus/Pro or API key)",
           "opencode-go": "Low cost subscription for everyone",
+          litellm: "(Custom OpenAI-compatible endpoint)",
         }[provider.id],
         category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",
         async onSelect() {
@@ -105,6 +107,31 @@ export function createDialogProviderOptions() {
             }
           }
           if (method.type === "api") {
+            // Handle litellm and other providers with custom prompts
+            if (method.prompts && method.prompts.length > 0) {
+              const inputs = await PromptsMethod({
+                dialog,
+                prompts: method.prompts,
+              })
+              if (!inputs) return
+              
+              // Save both baseURL and apiKey for litellm
+              const auth: { type: "api"; key: string; baseURL?: string } = {
+                type: "api",
+                key: inputs.apiKey || "not-required",
+              }
+              if (inputs.baseURL) {
+                auth.baseURL = inputs.baseURL
+              }
+              await sdk.client.auth.set({
+                providerID: provider.id,
+                auth,
+              })
+              await sdk.client.instance.dispose()
+              await sync.bootstrap()
+              dialog.replace(() => <DialogModel providerID={provider.id} />)
+              return
+            }
             return dialog.replace(() => <ApiMethod providerID={provider.id} title={method.label} />)
           }
         },

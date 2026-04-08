@@ -876,12 +876,15 @@ export namespace Provider {
       // Try to fetch available models from LiteLLM
       let models: Record<string, Model> = {}
       try {
+        log.info("Fetching models from LiteLLM", { baseURL, hasApiKey: !!apiKey })
         const response = await fetch(`${baseURL}/models`, {
           headers: apiKey ? { "Authorization": `Bearer ${apiKey}` } : {},
           signal: AbortSignal.timeout(10000)
         })
+        log.info("LiteLLM models response", { status: response.status, ok: response.ok })
         if (response.ok) {
           const data = await response.json() as { data?: Array<{ id: string; context_window?: number }> }
+          log.info("LiteLLM models data", { modelCount: data.data?.length || 0 })
           if (data.data) {
             for (const m of data.data) {
               const modelId = m.id
@@ -928,7 +931,7 @@ export namespace Provider {
           }
         }
       } catch (e) {
-        log.warn("Failed to fetch models from LiteLLM", { baseURL, error: e })
+        log.warn("Failed to fetch models from LiteLLM", { baseURL, error: String(e) })
       }
 
       return {
@@ -1437,20 +1440,23 @@ export namespace Provider {
             mergeProvider(providerID, partial)
           }
 
-          const gitlab = ProviderID.make("gitlab")
-          if (discoveryLoaders[gitlab] && providers[gitlab] && isProviderAllowed(gitlab)) {
-            yield* Effect.promise(async () => {
-              try {
-                const discovered = await discoveryLoaders[gitlab]()
-                for (const [modelID, model] of Object.entries(discovered)) {
-                  if (!providers[gitlab].models[modelID]) {
-                    providers[gitlab].models[modelID] = model
+          // Run discovery loaders for providers that support dynamic model discovery
+          const discoveryProviders = [ProviderID.make("gitlab"), ProviderID.make("litellm")]
+          for (const providerID of discoveryProviders) {
+            if (discoveryLoaders[providerID] && providers[providerID] && isProviderAllowed(providerID)) {
+              yield* Effect.promise(async () => {
+                try {
+                  const discovered = await discoveryLoaders[providerID]()
+                  for (const [modelID, model] of Object.entries(discovered)) {
+                    if (!providers[providerID].models[modelID]) {
+                      providers[providerID].models[modelID] = model
+                    }
                   }
+                } catch (e) {
+                  log.warn("state discovery error", { id: providerID, error: e })
                 }
-              } catch (e) {
-                log.warn("state discovery error", { id: "gitlab", error: e })
-              }
-            })
+              })
+            }
           }
 
           for (const hook of plugins) {

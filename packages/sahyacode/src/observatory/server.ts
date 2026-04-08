@@ -548,13 +548,30 @@ let currentWorkDir: string = ""
 function statusPage(projectDir: string): string {
   currentWorkDir = projectDir
   const s = Observatory.getState()
-  const fileItems = s.recentFiles.length > 0
-    ? s.recentFiles.map(f => {
-        const rel = path.relative(LIVE_VIEW_DIR, f)
+  // Get files from current workDir for initial display
+  const workDirFiles: string[] = []
+  try {
+    const checkPath = currentWorkDir || projectDir
+    if (fs.existsSync(checkPath)) {
+      const entries = fs.readdirSync(checkPath, { withFileTypes: true })
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          workDirFiles.push(path.join(checkPath, entry.name))
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  
+  const filesToShow = workDirFiles.length > 0 ? workDirFiles : s.recentFiles
+  const fileItems = filesToShow.length > 0
+    ? filesToShow.map(f => {
+        const name = path.basename(f)
         const ext = path.extname(f).slice(1) || "?"
-        return `<li><span class="badge">${ext}</span><span class="file-name">${rel}</span></li>`
+        return `<li><span class="badge">${ext}</span><span class="file-name">${name}</span></li>`
       }).join("")
-    : `<li class="empty">Waiting for the LLM to write files…</li>`
+    : `<li class="empty">No files in this directory</li>`
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1105,14 +1122,19 @@ function statusPage(projectDir: string): string {
               projDirEl.textContent = d.projectDir;
             }
           }
-          // Update file list
+          // Update file list - use workDirFiles if available, fall back to recentFiles
           var ul = document.getElementById('files');
-          if (ul && d.recentFiles && d.recentFiles.length > 0) {
-            ul.innerHTML = d.recentFiles.map(function(f) {
-              var name = f.split('/').pop();
-              var ext  = (name.split('.').pop() || '?').toLowerCase();
-              return '<li><span class="badge">' + ext + '</span><span class="file-name">' + name + '</span></li>';
-            }).join('');
+          var filesToShow = d.workDirFiles || d.recentFiles || [];
+          if (ul) {
+            if (filesToShow.length > 0) {
+              ul.innerHTML = filesToShow.map(function(f) {
+                var name = f.split('/').pop();
+                var ext  = (name.split('.').pop() || '?').toLowerCase();
+                return '<li><span class="badge">' + ext + '</span><span class="file-name">' + name + '</span></li>';
+              }).join('');
+            } else {
+              ul.innerHTML = '<li class="empty">No files in this directory yet</li>';
+            }
           }
           // Update task
           var taskDiv  = document.getElementById('task');
@@ -1230,16 +1252,36 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
         }
 
         if (url === "/~observatory/status") {
-          const state = Observatory.getState()
-          // Use the current working directory (which may have been updated via API)
-          const effectiveWorkDir = currentWorkDir || workDir
-          const statusWithDir = {
-            ...state,
-            projectDir: state.projectDir || effectiveWorkDir,
-            liveViewDir: LIVE_VIEW_DIR,
-          }
-          res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
-          res.end(JSON.stringify(statusWithDir))
+          (async () => {
+            const state = Observatory.getState()
+            // Use the current working directory (which may have been updated via API)
+            const effectiveWorkDir = currentWorkDir || workDir
+            
+            // Get files from the working directory (not just LIVE_VIEW_DIR)
+            const workDirFiles: string[] = []
+            try {
+              const workDirPath = effectiveWorkDir
+              if (fs.existsSync(workDirPath)) {
+                const entries = await fs.promises.readdir(workDirPath, { withFileTypes: true })
+                for (const entry of entries) {
+                  if (entry.isFile()) {
+                    workDirFiles.push(path.join(workDirPath, entry.name))
+                  }
+                }
+              }
+            } catch (e) {
+              // Ignore errors reading workDir
+            }
+            
+            const statusWithDir = {
+              ...state,
+              projectDir: state.projectDir || effectiveWorkDir,
+              liveViewDir: LIVE_VIEW_DIR,
+              workDirFiles,
+            }
+            res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
+            res.end(JSON.stringify(statusWithDir))
+          })()
           return
         }
 
@@ -1306,16 +1348,16 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
 
         if (url === "/~observatory/browse" && method === "GET") {
           (async () => {
-            const urlObj = new URL(req.url || "/", `http://${req.headers.host}`)
-            const browsePath = urlObj.searchParams.get("path") || currentWorkDir || workDir
-            
             try {
+              const urlObj = new URL(req.url || "/", `http://${req.headers.host}`)
+              const browsePath = urlObj.searchParams.get("path") || currentWorkDir || workDir || "/"
+              
               // Resolve and validate path
               const resolvedPath = path.resolve(browsePath)
               const stats = await fs.promises.stat(resolvedPath)
               
               if (!stats.isDirectory()) {
-                res.writeHead(400, { "Content-Type": "application/json" })
+                res.writeHead(400, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
                 res.end(JSON.stringify({ success: false, message: "Path is not a directory" }))
                 return
               }
@@ -1350,7 +1392,7 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
                 files,
               }))
             } catch (err) {
-              res.writeHead(500, { "Content-Type": "application/json" })
+              res.writeHead(500, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
               res.end(JSON.stringify({ success: false, message: String(err) }))
             }
           })()

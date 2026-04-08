@@ -190,10 +190,13 @@ main() {
     # Find the extracted directory (sahyacode-*)
     EXTRACTED_DIR=$(find "$TEMP_DIR" -maxdepth 1 -type d -name "sahyacode-*" | head -1)
     
-    # Install binary - look for 'opencode' binary in the archive
+    # Install binary - look for binary in the extracted directory first
     if [ -f "$EXTRACTED_DIR/bin/opencode" ]; then
         chmod +x "$EXTRACTED_DIR/bin/opencode"
         mv "$EXTRACTED_DIR/bin/opencode" "$INSTALL_DIR/${INSTALL_NAME}"
+    elif [ -f "$EXTRACTED_DIR/bin/sahyacode" ]; then
+        chmod +x "$EXTRACTED_DIR/bin/sahyacode"
+        mv "$EXTRACTED_DIR/bin/sahyacode" "$INSTALL_DIR/${INSTALL_NAME}"
     elif [ -f "$TEMP_DIR/sahyacode" ]; then
         chmod +x "$TEMP_DIR/sahyacode"
         mv "$TEMP_DIR/sahyacode" "$INSTALL_DIR/${INSTALL_NAME}"

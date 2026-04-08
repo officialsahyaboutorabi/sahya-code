@@ -51,6 +51,36 @@ export const ProviderRoutes = lazy(() =>
           }
         }
 
+        // Add LiteLLM provider for custom OpenAI-compatible endpoints
+        if (!disabled.has("litellm")) {
+          filteredProviders["litellm"] = {
+            id: "litellm",
+            name: "LiteLLM (Custom)",
+            env: [],
+            npm: "@ai-sdk/openai-compatible",
+            models: {
+              "default": {
+                id: "litellm/default",
+                name: "Default Model",
+                release_date: "2024-01-01",
+                attachment: true,
+                reasoning: false,
+                temperature: true,
+                tool_call: true,
+                cost: {
+                  input: 0,
+                  output: 0,
+                },
+                limit: {
+                  context: 128000,
+                  output: 4096,
+                },
+                options: {},
+              },
+            },
+          }
+        }
+
         const connected = await Provider.list()
         const providers = Object.assign(
           mapValues(filteredProviders, (x) => Provider.fromModelsDevProvider(x)),
@@ -81,7 +111,29 @@ export const ProviderRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        return c.json(await ProviderAuth.methods())
+        const methods = await ProviderAuth.methods()
+        // Add LiteLLM auth method with URL (required) and API key (optional)
+        methods["litellm"] = [
+          {
+            type: "api",
+            label: "LiteLLM Endpoint",
+            prompts: [
+              {
+                type: "text",
+                key: "baseURL",
+                message: "Enter your LiteLLM/OpenAI-compatible endpoint URL",
+                placeholder: "https://llm.example.com/v1",
+              },
+              {
+                type: "text",
+                key: "apiKey",
+                message: "Enter API key (optional)",
+                placeholder: "sk-... (leave empty if not required)",
+              },
+            ],
+          },
+        ]
+        return c.json(methods)
       },
     )
     .post(

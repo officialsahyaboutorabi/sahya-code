@@ -851,16 +851,19 @@ export namespace Provider {
       }
     },
     litellm: async (input) => {
-      // LiteLLM provider - default to nexiant endpoint
+      // LiteLLM provider - read baseURL from auth first, then config/env
       const config = await Config.get()
-      const baseURL = config.provider?.["litellm"]?.options?.baseURL 
-        || Env.get("LITELLM_BASE_URL") 
-        || "https://llm.nexiant.ai"
+      const auth = await Auth.get("litellm")
+      
+      const baseURL = auth?.type === "api" && auth.baseURL
+        ? auth.baseURL
+        : config.provider?.["litellm"]?.options?.baseURL 
+          || Env.get("LITELLM_BASE_URL") 
+          || "https://llm.nexiant.ai"
       
       const apiKey = await (async () => {
         const envKey = Env.get("LITELLM_API_KEY")
         if (envKey) return envKey
-        const auth = await Auth.get("litellm")
         if (auth?.type === "api") return auth.key
         return config.provider?.["litellm"]?.options?.apiKey
       })()

@@ -678,6 +678,21 @@ function statusPage(projectDir: string): string {
       word-break: break-all;
     }
 
+    /* Directory input */
+    .dir-input-wrap {
+      display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .dir-input {
+      flex: 1; min-width: 200px;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace; font-size: .82rem;
+      color: var(--text-primary);
+      outline: none;
+    }
+    .dir-input:focus { border-color: var(--accent); }
+    .dir-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+    
     /* Directory browser */
     .dir-browser {
       background: var(--bg-primary);
@@ -805,6 +820,14 @@ function statusPage(projectDir: string): string {
     <div class="proj-dir" id="project-dir">${projectDir}</div>
 
     <div class="label">Set Working Directory</div>
+    
+    <!-- Manual Path Input -->
+    <div class="dir-input-wrap">
+      <input type="text" class="dir-input" id="workdir-input" placeholder="Enter path manually..." />
+      <button class="action-btn primary" id="set-manual-btn">Set Path</button>
+    </div>
+    
+    <!-- Directory Browser -->
     <div class="dir-browser" id="dir-browser">
       <div class="dir-browser-header">
         <span id="current-path">${projectDir}</span>
@@ -840,6 +863,70 @@ function statusPage(projectDir: string): string {
   <script>
     // ── Dynamic project directory (updated from status) ───────────────────────
     var currentProjectDir = ${JSON.stringify(projectDir)};
+    
+    // ── Manual Path Input ────────────────────────────────────────────────────
+    document.getElementById('set-manual-btn').addEventListener('click', function() {
+      var input = document.getElementById('workdir-input');
+      var result = document.getElementById('workdir-result');
+      var btn = this;
+      var newDir = input.value.trim();
+      
+      if (!newDir) {
+        result.style.display = 'block';
+        result.style.color = 'var(--error)';
+        result.textContent = 'Please enter a directory path';
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = '⏳ Setting...';
+      
+      fetch('/~observatory/set-workdir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workDir: newDir })
+      })
+        .then(function(r) {
+          if (!r.ok) {
+            return r.text().then(function(text) {
+              throw new Error('Server error: ' + text);
+            });
+          }
+          return r.json();
+        })
+        .then(function(d) {
+          result.style.display = 'block';
+          if (d.success) {
+            result.style.color = 'var(--success)';
+            result.textContent = d.message || 'Working directory updated successfully';
+            currentProjectDir = newDir;
+            var projDirEl = document.getElementById('project-dir');
+            if (projDirEl) projDirEl.textContent = newDir;
+            // Refresh browser to new path
+            browserCurrentPath = newDir;
+            loadDirectory(newDir);
+          } else {
+            result.style.color = 'var(--error)';
+            result.textContent = d.message || 'Failed to update working directory';
+          }
+          btn.disabled = false;
+          btn.textContent = 'Set Path';
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Set Path';
+          result.style.display = 'block';
+          result.style.color = 'var(--error)';
+          result.textContent = 'Error: ' + String(err);
+        });
+    });
+    
+    // Allow Enter key on input
+    document.getElementById('workdir-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('set-manual-btn').click();
+      }
+    });
     
     // ── Directory Browser ────────────────────────────────────────────────────
     var browserCurrentPath = currentProjectDir;

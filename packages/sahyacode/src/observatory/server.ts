@@ -545,6 +545,368 @@ function replayPage(): string {
 
 let currentWorkDir: string = ""
 
+function liveConstructionPage(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Live Construction — Observatory</title>
+  <style>
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Regular.woff2') format('woff2'); font-weight: normal; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Medium.woff2') format('woff2'); font-weight: 500; }
+    @font-face { font-family: 'SB Sans Text'; src: url('https://cdn-app.giga.chat/shared-static/0.0.0/fonts/SBSansText/SBSansText-Semibold.woff2') format('woff2'); font-weight: 600; }
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  </style>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary: #0d0d0d;
+      --bg-secondary: #121212;
+      --bg-card: #171717;
+      --bg-hover: #1f1f1f;
+      --text-primary: #fbfbfb;
+      --text-secondary: #b7b7b7;
+      --accent: #ff4f00;
+      --accent-glow: rgba(255,107,44,.1);
+      --success: #00ff88;
+      --border: #2a2a2a;
+    }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: 'SB Sans Text', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+    .topbar-logo { font-size: 1.3rem; }
+    .topbar-title { font-weight: 700; font-size: 1rem; }
+    .topbar-title span { color: var(--accent); }
+    .topbar-status {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.8rem; color: var(--text-secondary);
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .main { display: flex; height: calc(100% - 57px); }
+    .sidebar {
+      width: 280px;
+      border-right: 1px solid var(--border);
+      background: var(--bg-secondary);
+      display: flex; flex-direction: column;
+    }
+    .panel-header {
+      padding: 12px 16px;
+      font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .file-tree {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .file-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 16px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .file-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .file-item.active { 
+      background: var(--accent-glow); 
+      color: var(--accent);
+      border-right: 2px solid var(--accent);
+    }
+    .file-item.writing { animation: writing 0.5s ease-in-out infinite alternate; }
+    @keyframes writing { from { opacity: 0.6; } to { opacity: 1; } }
+    .file-icon { font-size: 0.9rem; }
+    .activity-log {
+      height: 150px;
+      border-top: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 8px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+    }
+    .activity-item {
+      padding: 4px 16px;
+      color: var(--text-secondary);
+      display: flex; align-items: center;
+      gap: 8px;
+    }
+    .activity-item.new { color: var(--success); }
+    .activity-item::before { content: '›'; color: var(--accent); }
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .code-panel {
+      height: 40%;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .code-header {
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .code-header span { color: var(--accent); }
+    .writing-indicator {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.75rem; color: var(--text-secondary);
+    }
+    .writing-indicator.active { color: var(--success); }
+    .typing-dots { display: flex; gap: 3px; }
+    .typing-dots span {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: currentColor;
+      animation: typing 1s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing { 0%,100%{opacity:0.3} 50%{opacity:1} }
+    .code-body {
+      flex: 1;
+      overflow: auto;
+      background: var(--bg-primary);
+    }
+    .code-body pre {
+      margin: 0;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+    .code-body code { background: transparent !important; }
+    .preview-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-header {
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .preview-toolbar {
+      display: flex; gap: 8px;
+    }
+    .btn {
+      padding: 4px 12px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .preview-frame {
+      flex: 1;
+      border: none;
+      background: white;
+    }
+    .hljs { background: transparent !important; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-logo">🔭</div>
+    <div class="topbar-title"><span>Observatory</span> — Live Construction</div>
+    <div class="topbar-status">
+      <div class="status-dot"></div>
+      <span id="status-text">Watching...</span>
+    </div>
+  </div>
+  
+  <div class="main">
+    <div class="sidebar">
+      <div class="panel-header">Files</div>
+      <div class="file-tree" id="file-tree"></div>
+      <div class="panel-header">Activity</div>
+      <div class="activity-log" id="activity-log"></div>
+    </div>
+    
+    <div class="content-area">
+      <div class="code-panel">
+        <div class="code-header">
+          <span id="current-file">—</span>
+          <div class="writing-indicator" id="writing-indicator">
+            <div class="typing-dots"><span></span><span></span><span></span></div>
+            <span>Writing...</span>
+          </div>
+        </div>
+        <div class="code-body">
+          <pre><code id="code-display" class="hljs"></code></pre>
+        </div>
+      </div>
+      
+      <div class="preview-panel">
+        <div class="preview-header">
+          <span>Live Preview</span>
+          <div class="preview-toolbar">
+            <button class="btn" onclick="refreshPreview()">🔄 Refresh</button>
+            <button class="btn" onclick="openPreview()">↗️ Open</button>
+          </div>
+        </div>
+        <iframe class="preview-frame" id="preview-frame" src="/~observatory/preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const fileTree = document.getElementById('file-tree');
+    const activityLog = document.getElementById('activity-log');
+    const codeDisplay = document.getElementById('code-display');
+    const currentFile = document.getElementById('current-file');
+    const writingIndicator = document.getElementById('writing-indicator');
+    const statusText = document.getElementById('status-text');
+    const previewFrame = document.getElementById('preview-frame');
+    
+    const files = new Map();
+    let currentFilePath = null;
+    let typingTimer = null;
+    
+    function addActivity(message, isNew = false) {
+      const item = document.createElement('div');
+      item.className = 'activity-item' + (isNew ? ' new' : '');
+      item.textContent = message;
+      activityLog.insertBefore(item, activityLog.firstChild);
+      while (activityLog.children.length > 50) {
+        activityLog.removeChild(activityLog.lastChild);
+      }
+    }
+    
+    function addOrUpdateFile(relPath, content = '', isWriting = false) {
+      const existing = files.get(relPath);
+      if (!existing) {
+        const item = document.createElement('div');
+        item.className = 'file-item' + (isWriting ? ' writing' : '');
+        item.dataset.path = relPath;
+        const ext = relPath.split('.').pop() || '';
+        const icon = { html: '🌐', css: '🎨', js: '⚡', json: '📋', md: '📝' }[ext] || '📄';
+        item.innerHTML = '<span class="file-icon">' + icon + '</span><span>' + relPath + '</span>';
+        item.addEventListener('click', () => showFile(relPath));
+        fileTree.appendChild(item);
+        files.set(relPath, { element: item, content });
+        addActivity('Created ' + relPath, true);
+      } else {
+        existing.content = content;
+        existing.element.classList.toggle('writing', isWriting);
+        if (isWriting && currentFilePath === relPath) {
+          showFile(relPath, content);
+        }
+      }
+    }
+    
+    function showFile(relPath, content = null) {
+      const file = files.get(relPath);
+      if (!file) return;
+      
+      currentFilePath = relPath;
+      currentFile.textContent = relPath;
+      
+      document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+      file.element.classList.add('active');
+      
+      const displayContent = content !== null ? content : file.content;
+      const ext = relPath.split('.').pop() || '';
+      const langMap = { js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'javascript',
+        py: 'python', html: 'html', css: 'css', json: 'json', md: 'markdown' };
+      codeDisplay.className = 'hljs language-' + (langMap[ext] || 'plaintext');
+      codeDisplay.textContent = displayContent;
+      if (window.hljs) {
+        try { window.hljs.highlightElement(codeDisplay); } catch(e) {}
+      }
+    }
+    
+    function refreshPreview() {
+      previewFrame.src = previewFrame.src;
+    }
+    
+    function openPreview() {
+      window.open('/~observatory/preview', '_blank');
+    }
+    
+    window.refreshPreview = refreshPreview;
+    window.openPreview = openPreview;
+    
+    // Connect to SSE
+    const es = new EventSource('/~observatory/events');
+    
+    es.onmessage = function(e) {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'reload' && msg.file) {
+          const relPath = msg.file.replace(/^.*\//, '');
+          addOrUpdateFile(relPath, '', true);
+          showFile(relPath);
+          
+          writingIndicator.classList.add('active');
+          statusText.textContent = 'Writing ' + relPath + '...';
+          
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(() => {
+            writingIndicator.classList.remove('active');
+            statusText.textContent = 'Watching...';
+            const file = files.get(relPath);
+            if (file) file.element.classList.remove('writing');
+            refreshPreview();
+          }, 500);
+        }
+      } catch(_) {}
+    };
+    
+    // Load initial file list
+    fetch('/~observatory/status')
+      .then(r => r.json())
+      .then(data => {
+        if (data.files) {
+          data.files.forEach(f => addOrUpdateFile(f.name));
+        }
+      })
+      .catch(() => {});
+    
+    addActivity('Connected to live construction feed');
+  })();
+  </script>
+</body>
+</html>`
+}
+
 function statusPage(projectDir: string, hasIndexHtml: boolean = false): string {
   currentWorkDir = projectDir
   const s = Observatory.getState()
@@ -878,6 +1240,7 @@ function statusPage(projectDir: string, hasIndexHtml: boolean = false): string {
     <div class="divider"></div>
 
     <div class="actions">
+      <a href="/~observatory/live" class="action-btn">🔴 Live Construction</a>
       <a href="/~observatory/replay" class="action-btn">🎬 Watch Replay</a>
       <button class="action-btn primary" id="move-btn">📁 Move to Original Location</button>
     </div>
@@ -1305,6 +1668,40 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
         if (url === "/~observatory/replay") {
           res.writeHead(200, { "Content-Type": "text/html" })
           res.end(replayPage())
+          return
+        }
+
+        if (url === "/~observatory/live") {
+          res.writeHead(200, { "Content-Type": "text/html" })
+          res.end(liveConstructionPage())
+          return
+        }
+
+        if (url === "/~observatory/status") {
+          // Return JSON status for live construction page
+          const recordingPath = path.join(LIVE_VIEW_DIR, ".sahya-replay.json")
+          fs.readFile(recordingPath, (err, data) => {
+            const recording = err ? [] : JSON.parse(data.toString())
+            const files: Array<{name: string, path: string}> = []
+            
+            try {
+              if (fs.existsSync(LIVE_VIEW_DIR)) {
+                const entries = fs.readdirSync(LIVE_VIEW_DIR, { withFileTypes: true })
+                for (const entry of entries) {
+                  if (entry.isFile() && entry.name !== ".sahya-replay.json") {
+                    files.push({ name: entry.name, path: path.join(LIVE_VIEW_DIR, entry.name) })
+                  }
+                }
+              }
+            } catch (e) {}
+            
+            res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" })
+            res.end(JSON.stringify({ 
+              files, 
+              recording,
+              projectDir: currentWorkDir 
+            }))
+          })
           return
         }
 

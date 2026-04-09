@@ -1,6 +1,30 @@
 import type { AssistantMessage, Part, UserMessage } from "@opencode-ai/sdk/v2"
 import { Locale } from "@/util/locale"
 
+/**
+ * Detect if reasoning content appears to be encrypted or garbled.
+ * Encrypted reasoning often contains unusual Unicode characters and symbols.
+ */
+function isEncryptedReasoning(text: string): boolean {
+  if (!text || text.length < 10) return false
+  
+  // Check for high ratio of non-ASCII characters (excluding common whitespace/punctuation)
+  const nonAsciiCount = [...text].filter(c => {
+    const code = c.charCodeAt(0)
+    // Allow common ASCII: space, punctuation, alphanumeric
+    if (code < 128) return false
+    // Allow common Unicode: emojis, CJK, etc. for legitimate multilingual text
+    // But flag mathematical symbols, private use area, etc.
+    if (code >= 0x2000 && code <= 0x2BFF) return true // Mathematical/operators
+    if (code >= 0xE000 && code <= 0xF8FF) return true // Private use area
+    return false
+  }).length
+  
+  const ratio = nonAsciiCount / text.length
+  // If more than 15% are suspicious characters, likely encrypted
+  return ratio > 0.15
+}
+
 export type TranscriptOptions = {
   thinking: boolean
   toolDetails: boolean
@@ -73,7 +97,7 @@ export function formatPart(part: Part, options: TranscriptOptions): string {
   }
 
   if (part.type === "reasoning") {
-    if (options.thinking) {
+    if (options.thinking && !isEncryptedReasoning(part.text)) {
       return `_Thinking:_\n\n${part.text}\n\n`
     }
     return ""

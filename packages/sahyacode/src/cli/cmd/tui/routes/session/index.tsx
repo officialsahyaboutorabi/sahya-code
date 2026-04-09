@@ -1381,13 +1381,44 @@ const PART_MAPPING = {
   reasoning: ReasoningPart,
 }
 
+/**
+ * Detect if reasoning content appears to be encrypted or garbled.
+ * Encrypted reasoning often contains unusual Unicode characters and symbols.
+ */
+function isEncryptedReasoning(text: string): boolean {
+  if (!text || text.length < 10) return false
+  
+  // Check for high ratio of non-ASCII characters (excluding common whitespace/punctuation)
+  const nonAsciiCount = [...text].filter(c => {
+    const code = c.charCodeAt(0)
+    // Allow common ASCII: space, punctuation, alphanumeric
+    if (code < 128) return false
+    // Allow common Unicode: emojis, CJK, etc. for legitimate multilingual text
+    // But flag mathematical symbols, private use area, etc.
+    if (code >= 0x2000 && code <= 0x2BFF) return true // Mathematical/operators
+    if (code >= 0xE000 && code <= 0xF8FF) return true // Private use area
+    return false
+  }).length
+  
+  const ratio = nonAsciiCount / text.length
+  // If more than 15% are suspicious characters, likely encrypted
+  return ratio > 0.15
+}
+
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
   const { theme, subtleSyntax } = useTheme()
   const ctx = use()
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
-    return props.part.text.replace("[REDACTED]", "").trim()
+    const text = props.part.text.replace("[REDACTED]", "").trim()
+    
+    // Filter out encrypted/garbled reasoning content
+    if (isEncryptedReasoning(text)) {
+      return ""
+    }
+    
+    return text
   })
   return (
     <Show when={content() && ctx.showThinking()}>

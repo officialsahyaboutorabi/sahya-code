@@ -11,6 +11,9 @@ function falsy(key: string) {
 }
 
 export namespace Flag {
+  export const OTEL_EXPORTER_OTLP_ENDPOINT = process.env["OTEL_EXPORTER_OTLP_ENDPOINT"]
+  export const OTEL_EXPORTER_OTLP_HEADERS = process.env["OTEL_EXPORTER_OTLP_HEADERS"]
+
   export const OPENCODE_AUTO_SHARE = truthy("OPENCODE_AUTO_SHARE")
   export const OPENCODE_GIT_BASH_PATH = process.env["OPENCODE_GIT_BASH_PATH"]
   export const OPENCODE_CONFIG = process.env["OPENCODE_CONFIG"]
@@ -152,6 +155,17 @@ Object.defineProperty(Flag, "OPENCODE_PLUGIN_META_FILE", {
 Object.defineProperty(Flag, "OPENCODE_CLIENT", {
   get() {
     return process.env["OPENCODE_CLIENT"] ?? "cli"
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+// Dynamic getter for SAHYACODE_CLIENT
+// This must be evaluated at access time, not module load time,
+// because some commands override the client at runtime
+Object.defineProperty(Flag, "SAHYACODE_CLIENT", {
+  get() {
+    return process.env["SAHYACODE_CLIENT"] ?? process.env["OPENCODE_CLIENT"] ?? "cli"
   },
   enumerable: true,
   configurable: false,

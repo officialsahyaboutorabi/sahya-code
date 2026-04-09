@@ -82,7 +82,7 @@ const cli = yargs(hideBin(process.argv))
   .middleware(async (opts) => {
     if (opts.pure) {
       process.env.SAHYACODE_PURE = "1"
-      process.env.OPENCODE_PURE = "1"
+      process.env.SAHYACODE_PURE = "1"
     }
 
     await Log.init({
@@ -97,9 +97,9 @@ const cli = yargs(hideBin(process.argv))
 
     process.env.AGENT = "1"
     process.env.SAHYACODE = "1"
-    process.env.OPENCODE = "1"
+    process.env.SAHYACODE = "1"
     process.env.SAHYACODE_PID = String(process.pid)
-    process.env.OPENCODE_PID = String(process.pid)
+    process.env.SAHYACODE_PID = String(process.pid)
 
     Log.Default.info("sahyacode", {
       version: Installation.VERSION,

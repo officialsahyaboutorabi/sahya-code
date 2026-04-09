@@ -114,7 +114,7 @@ export namespace ToolRegistry {
 
       const all = Effect.fn("ToolRegistry.all")(function* (custom: Tool.Info[]) {
         const cfg = yield* config.get()
-        const question = ["app", "cli", "desktop"].includes(Flag.OPENCODE_CLIENT) || Flag.OPENCODE_ENABLE_QUESTION_TOOL
+        const question = ["app", "cli", "desktop"].includes(Flag.SAHYACODE_CLIENT) || Flag.SAHYACODE_ENABLE_QUESTION_TOOL
 
         return [
           InvalidTool,
@@ -133,9 +133,9 @@ export namespace ToolRegistry {
           SkillTool,
           ApplyPatchTool,
           VulnerabilityScanTool,
-          ...(Flag.OPENCODE_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
+          ...(Flag.SAHYACODE_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
           ...(cfg.experimental?.batch_tool === true ? [BatchTool] : []),
-          ...(Flag.OPENCODE_EXPERIMENTAL_PLAN_MODE && Flag.OPENCODE_CLIENT === "cli" ? [PlanExitTool] : []),
+          ...(Flag.SAHYACODE_EXPERIMENTAL_PLAN_MODE && Flag.SAHYACODE_CLIENT === "cli" ? [PlanExitTool] : []),
           ...custom,
         ]
       })
@@ -164,7 +164,7 @@ export namespace ToolRegistry {
         const allTools = yield* all(s.custom)
         const filtered = allTools.filter((tool) => {
           if (tool.id === "codesearch" || tool.id === "websearch") {
-            return model.providerID === ProviderID.opencode || Flag.OPENCODE_ENABLE_EXA
+            return model.providerID === ProviderID.opencode || Flag.SAHYACODE_ENABLE_EXA
           }
 
           const usePatch =

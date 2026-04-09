@@ -20,7 +20,7 @@ export const PairStartCommand = cmd({
     await bootstrap(process.cwd(), async () => {
       // Resolve the active session — use the first available or ask for one
       // via the SESSION_ID environment variable (same convention as other commands).
-      const sessionID = process.env["SAHYACODE_SESSION_ID"] ?? process.env["OPENCODE_SESSION_ID"] ?? "default"
+      const sessionID = process.env["SAHYACODE_SESSION_ID"] ?? process.env["SAHYACODE_SESSION_ID"] ?? "default"
 
       console.log(`Starting pair coding session for session: ${sessionID}`)
       console.log("Initializing WebSocket server...")

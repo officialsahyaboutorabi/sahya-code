@@ -17,7 +17,7 @@ export namespace Observability {
           serviceVersion: VERSION,
           attributes: {
             "deployment.environment.name": CHANNEL === "local" ? "local" : CHANNEL,
-            "sahyacode.client": Flag.OPENCODE_CLIENT,
+            "sahyacode.client": Flag.SAHYACODE_CLIENT,
           },
         },
         headers: Flag.OTEL_EXPORTER_OTLP_HEADERS

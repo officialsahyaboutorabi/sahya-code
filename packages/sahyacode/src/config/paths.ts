@@ -15,7 +15,7 @@ export namespace ConfigPaths {
   export async function directories(directory: string, worktree: string) {
     return [
       Global.Path.config,
-      ...(!Flag.SAHYACODE_DISABLE_PROJECT_CONFIG && !Flag.OPENCODE_DISABLE_PROJECT_CONFIG
+      ...(!Flag.SAHYACODE_DISABLE_PROJECT_CONFIG && !Flag.SAHYACODE_DISABLE_PROJECT_CONFIG
         ? await Array.fromAsync(
             Filesystem.up({
               targets: [".sahyacode", ".opencode"],
@@ -32,7 +32,7 @@ export namespace ConfigPaths {
         }),
       )),
       ...(Flag.SAHYACODE_CONFIG_DIR ? [Flag.SAHYACODE_CONFIG_DIR] : []),
-      ...(Flag.OPENCODE_CONFIG_DIR ? [Flag.OPENCODE_CONFIG_DIR] : []),
+      ...(Flag.SAHYACODE_CONFIG_DIR ? [Flag.SAHYACODE_CONFIG_DIR] : []),
     ]
   }
 

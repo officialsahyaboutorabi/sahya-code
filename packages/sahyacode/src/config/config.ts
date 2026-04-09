@@ -70,7 +70,7 @@ export namespace Config {
   }
 
   export function managedConfigDir() {
-    return process.env.SAHYACODE_TEST_MANAGED_CONFIG_DIR || process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
+    return process.env.SAHYACODE_TEST_MANAGED_CONFIG_DIR || process.env.SAHYACODE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
   }
 
   const managedDir = managedConfigDir()
@@ -1211,7 +1211,7 @@ export namespace Config {
 
           const scope = (source: string): PluginScope => {
             if (source.startsWith("http://") || source.startsWith("https://")) return "global"
-            if (source === "OPENCODE_CONFIG_CONTENT") return "local"
+            if (source === "SAHYACODE_CONFIG_CONTENT") return "local"
             if (Instance.containsPath(source)) return "local"
             return "global"
           }
@@ -1257,12 +1257,12 @@ export namespace Config {
           const global = yield* getGlobal()
           merge(Global.Path.config, global, "global")
 
-          if (Flag.OPENCODE_CONFIG) {
-            merge(Flag.OPENCODE_CONFIG, yield* loadFile(Flag.OPENCODE_CONFIG))
-            log.debug("loaded custom config", { path: Flag.OPENCODE_CONFIG })
+          if (Flag.SAHYACODE_CONFIG) {
+            merge(Flag.SAHYACODE_CONFIG, yield* loadFile(Flag.SAHYACODE_CONFIG))
+            log.debug("loaded custom config", { path: Flag.SAHYACODE_CONFIG })
           }
 
-          if (!Flag.OPENCODE_DISABLE_PROJECT_CONFIG) {
+          if (!Flag.SAHYACODE_DISABLE_PROJECT_CONFIG) {
             for (const file of yield* Effect.promise(() =>
               ConfigPaths.projectFiles("opencode", ctx.directory, ctx.worktree),
             )) {
@@ -1276,14 +1276,14 @@ export namespace Config {
 
           const directories = yield* Effect.promise(() => ConfigPaths.directories(ctx.directory, ctx.worktree))
 
-          if (Flag.OPENCODE_CONFIG_DIR) {
-            log.debug("loading config from OPENCODE_CONFIG_DIR", { path: Flag.OPENCODE_CONFIG_DIR })
+          if (Flag.SAHYACODE_CONFIG_DIR) {
+            log.debug("loading config from SAHYACODE_CONFIG_DIR", { path: Flag.SAHYACODE_CONFIG_DIR })
           }
 
           const deps: Promise<void>[] = []
 
           for (const dir of unique(directories)) {
-            if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
+            if (dir.endsWith(".opencode") || dir === Flag.SAHYACODE_CONFIG_DIR) {
               for (const file of ["opencode.json", "opencode.jsonc"]) {
                 const source = path.join(dir, file)
                 log.debug(`loading config from ${source}`)
@@ -1309,14 +1309,14 @@ export namespace Config {
             track(dir, list)
           }
 
-          if (process.env.OPENCODE_CONFIG_CONTENT) {
-            const source = "OPENCODE_CONFIG_CONTENT"
-            const next = yield* loadConfig(process.env.OPENCODE_CONFIG_CONTENT, {
+          if (process.env.SAHYACODE_CONFIG_CONTENT) {
+            const source = "SAHYACODE_CONFIG_CONTENT"
+            const next = yield* loadConfig(process.env.SAHYACODE_CONFIG_CONTENT, {
               dir: ctx.directory,
               source,
             })
             merge(source, next, "local")
-            log.debug("loaded custom config from OPENCODE_CONFIG_CONTENT")
+            log.debug("loaded custom config from SAHYACODE_CONFIG_CONTENT")
           }
 
           const active = Option.getOrUndefined(yield* accountSvc.active().pipe(Effect.orDie))
@@ -1328,8 +1328,8 @@ export namespace Config {
               )
               const token = Option.getOrUndefined(tokenOpt)
               if (token) {
-                process.env["OPENCODE_CONSOLE_TOKEN"] = token
-                Env.set("OPENCODE_CONSOLE_TOKEN", token)
+                process.env["SAHYACODE_CONSOLE_TOKEN"] = token
+                Env.set("SAHYACODE_CONSOLE_TOKEN", token)
               }
 
               const config = Option.getOrUndefined(configOpt)
@@ -1367,8 +1367,8 @@ export namespace Config {
             })
           }
 
-          if (Flag.OPENCODE_PERMISSION) {
-            result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.OPENCODE_PERMISSION))
+          if (Flag.SAHYACODE_PERMISSION) {
+            result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.SAHYACODE_PERMISSION))
           }
 
           if (result.tools) {
@@ -1390,10 +1390,10 @@ export namespace Config {
             result.share = "auto"
           }
 
-          if (Flag.OPENCODE_DISABLE_AUTOCOMPACT) {
+          if (Flag.SAHYACODE_DISABLE_AUTOCOMPACT) {
             result.compaction = { ...result.compaction, auto: false }
           }
-          if (Flag.OPENCODE_DISABLE_PRUNE) {
+          if (Flag.SAHYACODE_DISABLE_PRUNE) {
             result.compaction = { ...result.compaction, prune: false }
           }
 

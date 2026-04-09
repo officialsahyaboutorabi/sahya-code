@@ -2,27 +2,34 @@ import type { AssistantMessage, Part, UserMessage } from "@opencode-ai/sdk/v2"
 import { Locale } from "@/util/locale"
 
 /**
- * Detect if reasoning content appears to be encrypted or garbled.
- * Encrypted reasoning often contains unusual Unicode characters and symbols.
+ * Detect if reasoning content appears to be encrypted, garbled, or redacted.
+ * Some models return encrypted reasoning data or placeholders instead of readable text.
  */
-function isEncryptedReasoning(text: string): boolean {
+function isHiddenReasoning(text: string): boolean {
   if (!text || text.length < 10) return false
   
-  // Check for high ratio of non-ASCII characters (excluding common whitespace/punctuation)
+  // Check 1: High ratio of non-ASCII characters (encrypted/garbled content)
   const nonAsciiCount = [...text].filter(c => {
     const code = c.charCodeAt(0)
-    // Allow common ASCII: space, punctuation, alphanumeric
+    // Allow common ASCII
     if (code < 128) return false
-    // Allow common Unicode: emojis, CJK, etc. for legitimate multilingual text
-    // But flag mathematical symbols, private use area, etc.
+    // Flag mathematical symbols, private use area, etc.
     if (code >= 0x2000 && code <= 0x2BFF) return true // Mathematical/operators
     if (code >= 0xE000 && code <= 0xF8FF) return true // Private use area
     return false
   }).length
   
-  const ratio = nonAsciiCount / text.length
-  // If more than 15% are suspicious characters, likely encrypted
-  return ratio > 0.15
+  const nonAsciiRatio = nonAsciiCount / text.length
+  if (nonAsciiRatio > 0.15) return true
+  
+  // Check 2: Content is mostly underscores (kimi-for-coding redacted reasoning)
+  // Some models return "________" as placeholders for hidden reasoning
+  const trimmed = text.trim()
+  const underscoreCount = [...trimmed].filter(c => c === '_').length
+  const underscoreRatio = underscoreCount / trimmed.length
+  if (underscoreRatio > 0.8) return true
+  
+  return false
 }
 
 export type TranscriptOptions = {
@@ -97,7 +104,7 @@ export function formatPart(part: Part, options: TranscriptOptions): string {
   }
 
   if (part.type === "reasoning") {
-    if (options.thinking && !isEncryptedReasoning(part.text)) {
+    if (options.thinking && !isHiddenReasoning(part.text)) {
       return `_Thinking:_\n\n${part.text}\n\n`
     }
     return ""

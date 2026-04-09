@@ -5,6 +5,26 @@ All notable changes to Sahya Code will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.16.6] - 2026-04-08
+
+### Added
+
+- **Immersive Build View** — New `/~observatory/build` page for full-screen live build experience:
+  - AI cursor that moves to show where the LLM is focusing
+  - Focus highlights with resize handles around active elements
+  - Activity toasts showing real-time file operations
+  - Current action panel showing what the AI is doing
+  - Stats panel with file count and change count
+  - Live connection status indicator
+  - Top navigation with links to Files, Replay, and Refresh
+
+### Changed
+
+- Main observatory page now has three viewing modes:
+  - 🔴 Live Build (visual immersive view)
+  - 📁 Files & Code (detailed split view)
+  - 🎬 Replay (construction history)
+
 ## [v2.16.5] - 2026-04-08
 
 ### Added

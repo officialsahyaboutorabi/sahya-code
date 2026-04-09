@@ -22,8 +22,7 @@ export namespace Snapshot {
   export const FileDiff = z
     .object({
       file: z.string(),
-      before: z.string(),
-      after: z.string(),
+      patch: z.string(),
       additions: z.number(),
       deletions: z.number(),
       status: z.enum(["added", "deleted", "modified"]).optional(),
@@ -464,21 +463,17 @@ export namespace Snapshot {
                   const [adds, dels, file] = line.split("\t")
                   if (!file) continue
                   const binary = adds === "-" && dels === "-"
-                  const [before, after] = binary
-                    ? ["", ""]
-                    : yield* Effect.all(
-                        [
-                          git([...cfg, ...args(["show", `${from}:${file}`])]).pipe(Effect.map((item) => item.text)),
-                          git([...cfg, ...args(["show", `${to}:${file}`])]).pipe(Effect.map((item) => item.text)),
-                        ],
-                        { concurrency: 2 },
-                      )
+                  const patch = binary
+                    ? ""
+                    : yield* git(
+                        [...cfg, ...args(["diff", "--no-ext-diff", "-p", from, to, "--", file])],
+                        { cwd: state.directory },
+                      ).pipe(Effect.map((item) => item.text))
                   const additions = binary ? 0 : parseInt(adds)
                   const deletions = binary ? 0 : parseInt(dels)
                   result.push({
                     file,
-                    before,
-                    after,
+                    patch,
                     additions: Number.isFinite(additions) ? additions : 0,
                     deletions: Number.isFinite(deletions) ? deletions : 0,
                     status: status.get(file) ?? "modified",

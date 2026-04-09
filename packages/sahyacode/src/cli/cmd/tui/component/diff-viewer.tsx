@@ -29,109 +29,28 @@ function parseDiff(diffs: Snapshot.FileDiff[]): DiffLine[] {
     const statusLabel = status === "added" ? " (new file)" : status === "deleted" ? " (deleted)" : ""
     lines.push({ kind: "file", text: `${fd.file}${statusLabel}  +${fd.additions} -${fd.deletions}` })
 
-    const before = (fd.before ?? "").split("\n")
-    const after = (fd.after ?? "").split("\n")
+    const patch = fd.patch ?? ""
+    const patchLines = patch.split("\n")
 
-    if (status === "added") {
-      lines.push({ kind: "hunk", text: `@@ -0,0 +1,${after.length} @@` })
-      for (const l of after) lines.push({ kind: "addition", text: `+${l}` })
-    } else if (status === "deleted") {
-      lines.push({ kind: "hunk", text: `@@ -1,${before.length} +0,0 @@` })
-      for (const l of before) lines.push({ kind: "deletion", text: `-${l}` })
-    } else {
-      // Unified diff with up to 3 lines of context
-      const CONTEXT = 3
-      const ops = computeUnifiedDiff(before, after)
-      let i = 0
-      while (i < ops.length) {
-        // find next changed region
-        let start = i
-        while (start < ops.length && ops[start].kind === "context") start++
-        if (start >= ops.length) break
-
-        const chunkStart = Math.max(0, start - CONTEXT)
-        let end = start
-        while (end < ops.length && !(ops[end].kind === "context")) end++
-        const chunkEnd = Math.min(ops.length, end + CONTEXT)
-
-        // compute line numbers for hunk header
-        const beforeStart = ops[chunkStart].beforeLine
-        const afterStart = ops[chunkStart].afterLine
-        const beforeCount = ops.slice(chunkStart, chunkEnd).filter((o) => o.kind !== "addition").length
-        const afterCount = ops.slice(chunkStart, chunkEnd).filter((o) => o.kind !== "deletion").length
-        lines.push({ kind: "hunk", text: `@@ -${beforeStart},${beforeCount} +${afterStart},${afterCount} @@` })
-
-        for (let j = chunkStart; j < chunkEnd; j++) {
-          const op = ops[j]
-          if (op.kind === "addition") lines.push({ kind: "addition", text: `+${op.text}` })
-          else if (op.kind === "deletion") lines.push({ kind: "deletion", text: `-${op.text}` })
-          else lines.push({ kind: "context", text: ` ${op.text}` })
-        }
-        i = chunkEnd
+    for (const line of patchLines) {
+      if (line.startsWith("@@")) {
+        lines.push({ kind: "hunk", text: line })
+      } else if (line.startsWith("+")) {
+        lines.push({ kind: "addition", text: line })
+      } else if (line.startsWith("-")) {
+        lines.push({ kind: "deletion", text: line })
+      } else if (line.startsWith(" ")) {
+        lines.push({ kind: "context", text: line })
+      } else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("--- ") || line.startsWith("+++ ")) {
+        // Skip git diff metadata lines - we already show the filename
+        continue
+      } else if (line === "\\ No newline at end of file") {
+        lines.push({ kind: "context", text: line })
       }
     }
   }
 
   return lines
-}
-
-interface DiffOp {
-  kind: "addition" | "deletion" | "context"
-  text: string
-  beforeLine: number
-  afterLine: number
-}
-
-/**
- * Minimal Myers-style LCS diff — produces addition/deletion/context ops
- * suitable for generating a unified diff view.
- */
-function computeUnifiedDiff(before: string[], after: string[]): DiffOp[] {
-  const m = before.length
-  const n = after.length
-  // Build LCS table
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = before[i - 1] === after[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1])
-    }
-  }
-
-  const ops: DiffOp[] = []
-  let i = m
-  let j = n
-  const raw: DiffOp[] = []
-  let beforeLine = m
-  let afterLine = n
-
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && before[i - 1] === after[j - 1]) {
-      raw.push({ kind: "context", text: before[i - 1], beforeLine: i, afterLine: j })
-      i--
-      j--
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      raw.push({ kind: "addition", text: after[j - 1], beforeLine: i + 1, afterLine: j })
-      j--
-    } else {
-      raw.push({ kind: "deletion", text: before[i - 1], beforeLine: i, afterLine: j + 1 })
-      i--
-    }
-  }
-
-  raw.reverse()
-
-  // Renumber with real 1-based line numbers
-  let bl = 1
-  let al = 1
-  for (const op of raw) {
-    op.beforeLine = bl
-    op.afterLine = al
-    if (op.kind !== "addition") bl++
-    if (op.kind !== "deletion") al++
-    ops.push(op)
-  }
-
-  return ops
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────

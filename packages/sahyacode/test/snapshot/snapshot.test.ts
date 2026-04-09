@@ -974,8 +974,7 @@ test("diffFull with new file additions", async () => {
 
       const newFileDiff = diffs[0]
       expect(newFileDiff.file).toBe("new.txt")
-      expect(newFileDiff.before).toBe("")
-      expect(newFileDiff.after).toBe("new content")
+      expect(newFileDiff.patch).toContain("new content")
       expect(newFileDiff.additions).toBe(1)
       expect(newFileDiff.deletions).toBe(0)
     },
@@ -1000,8 +999,7 @@ test("diffFull with file modifications", async () => {
 
       const modifiedFileDiff = diffs[0]
       expect(modifiedFileDiff.file).toBe("b.txt")
-      expect(modifiedFileDiff.before).toBe(tmp.extra.bContent)
-      expect(modifiedFileDiff.after).toBe("modified content")
+      expect(modifiedFileDiff.patch).toContain("modified content")
       expect(modifiedFileDiff.additions).toBeGreaterThan(0)
       expect(modifiedFileDiff.deletions).toBeGreaterThan(0)
     },
@@ -1026,8 +1024,7 @@ test("diffFull with file deletions", async () => {
 
       const removedFileDiff = diffs[0]
       expect(removedFileDiff.file).toBe("a.txt")
-      expect(removedFileDiff.before).toBe(tmp.extra.aContent)
-      expect(removedFileDiff.after).toBe("")
+      expect(removedFileDiff.patch).toContain(tmp.extra.aContent)
       expect(removedFileDiff.additions).toBe(0)
       expect(removedFileDiff.deletions).toBe(1)
     },
@@ -1052,8 +1049,7 @@ test("diffFull with multiple line additions", async () => {
 
       const multiDiff = diffs[0]
       expect(multiDiff.file).toBe("multi.txt")
-      expect(multiDiff.before).toBe("")
-      expect(multiDiff.after).toBe("line1\nline2\nline3")
+      expect(multiDiff.patch).toContain("line1")
       expect(multiDiff.additions).toBe(3)
       expect(multiDiff.deletions).toBe(0)
     },
@@ -1079,15 +1075,13 @@ test("diffFull with addition and deletion", async () => {
 
       const addedFileDiff = diffs.find((d) => d.file === "added.txt")
       expect(addedFileDiff).toBeDefined()
-      expect(addedFileDiff!.before).toBe("")
-      expect(addedFileDiff!.after).toBe("added content")
+      expect(addedFileDiff!.patch).toContain("added content")
       expect(addedFileDiff!.additions).toBe(1)
       expect(addedFileDiff!.deletions).toBe(0)
 
       const removedFileDiff = diffs.find((d) => d.file === "a.txt")
       expect(removedFileDiff).toBeDefined()
-      expect(removedFileDiff!.before).toBe(tmp.extra.aContent)
-      expect(removedFileDiff!.after).toBe("")
+      expect(removedFileDiff!.patch).toContain(tmp.extra.aContent)
       expect(removedFileDiff!.additions).toBe(0)
       expect(removedFileDiff!.deletions).toBe(1)
     },
@@ -1171,7 +1165,7 @@ test("diffFull with binary file changes", async () => {
 
       const binaryDiff = diffs[0]
       expect(binaryDiff.file).toBe("binary.bin")
-      expect(binaryDiff.before).toBe("")
+      expect(binaryDiff.patch).toBe("")
     },
   })
 })

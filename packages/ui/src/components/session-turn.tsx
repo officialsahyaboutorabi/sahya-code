@@ -1,4 +1,5 @@
 import { AssistantMessage, type FileDiff, Message as MessageType, Part as PartType } from "@opencode-ai/sdk/v2/client"
+import { parseUnifiedDiff } from "../pierre/parse-diff"
 import type { SessionStatus } from "@opencode-ai/sdk/v2"
 import { useData } from "../context"
 import { useFileComponent } from "../context/file"
@@ -505,12 +506,17 @@ export function SessionTurn(
                                     <Accordion.Content>
                                       <Show when={visible()}>
                                         <div data-slot="session-turn-diff-view" data-scrollable>
-                                          <Dynamic
-                                            component={fileComponent}
-                                            mode="diff"
-                                            before={{ name: diff.file, contents: diff.before }}
-                                            after={{ name: diff.file, contents: diff.after }}
-                                          />
+                                          {(() => {
+                                            const { before, after } = parseUnifiedDiff(diff.patch)
+                                            return (
+                                              <Dynamic
+                                                component={fileComponent}
+                                                mode="diff"
+                                                before={{ name: diff.file, contents: before }}
+                                                after={{ name: diff.file, contents: after }}
+                                              />
+                                            )
+                                          })()}
                                         </div>
                                       </Show>
                                     </Accordion.Content>

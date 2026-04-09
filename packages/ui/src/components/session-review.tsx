@@ -16,6 +16,7 @@ import { checksum } from "@opencode-ai/util/encode"
 import { createEffect, createMemo, For, Match, onCleanup, Show, Switch, untrack, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { type FileContent, type FileDiff } from "@opencode-ai/sdk/v2"
+import { parseUnifiedDiff } from "../pierre/parse-diff"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
 import { type SelectedLineRange } from "@pierre/diffs"
 import { Dynamic } from "solid-js/web"
@@ -248,7 +249,8 @@ export const SessionReview = (props: SessionReviewProps) => {
 
   const selectionPreview = (diff: FileDiff, range: SelectedLineRange) => {
     const side = selectionSide(range)
-    const contents = side === "deletions" ? diff.before : diff.after
+    const { before, after } = parseUnifiedDiff(diff.patch)
+    const contents = side === "deletions" ? before : after
     if (typeof contents !== "string" || contents.length === 0) return undefined
 
     return previewSelectedLines(contents, range)
@@ -372,8 +374,9 @@ export const SessionReview = (props: SessionReviewProps) => {
                     const comments = createMemo(() => grouped().get(file) ?? [])
                     const commentedLines = createMemo(() => comments().map((c) => c.selection))
 
-                    const beforeText = () => (typeof item().before === "string" ? item().before : "")
-                    const afterText = () => (typeof item().after === "string" ? item().after : "")
+                    const diffContent = createMemo(() => parseUnifiedDiff(item().patch))
+                    const beforeText = () => diffContent().before
+                    const afterText = () => diffContent().after
                     const changedLines = () => item().additions + item().deletions
                     const mediaKind = createMemo(() => mediaKindFromPath(file))
 
@@ -599,17 +602,17 @@ export const SessionReview = (props: SessionReviewProps) => {
                                     commentedLines={commentedLines()}
                                     before={{
                                       name: file,
-                                      contents: typeof item().before === "string" ? item().before : "",
+                                      contents: beforeText(),
                                     }}
                                     after={{
                                       name: file,
-                                      contents: typeof item().after === "string" ? item().after : "",
+                                      contents: afterText(),
                                     }}
                                     media={{
                                       mode: "auto",
                                       path: file,
-                                      before: item().before,
-                                      after: item().after,
+                                      before: beforeText(),
+                                      after: afterText(),
                                       readFile: props.readFile,
                                     }}
                                   />

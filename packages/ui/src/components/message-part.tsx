@@ -31,6 +31,7 @@ import {
 } from "@opencode-ai/sdk/v2"
 import { useData } from "../context"
 import { useFileComponent } from "../context/file"
+import { parseUnifiedDiff } from "../pierre/parse-diff"
 import { useDialog } from "../context/dialog"
 import { type UiI18n, useI18n } from "../context/i18n"
 import { BasicTool, GenericTool } from "./basic-tool"
@@ -1828,18 +1829,24 @@ ToolRegistry.register({
               }
             >
               <div data-component="edit-content">
-                <Dynamic
-                  component={fileComponent}
-                  mode="diff"
-                  before={{
-                    name: props.metadata?.filediff?.file || props.input.filePath,
-                    contents: props.metadata?.filediff?.before || props.input.oldString,
-                  }}
-                  after={{
-                    name: props.metadata?.filediff?.file || props.input.filePath,
-                    contents: props.metadata?.filediff?.after || props.input.newString,
-                  }}
-                />
+                {(() => {
+                  const patch = props.metadata?.filediff?.patch || ""
+                  const { before, after } = parseUnifiedDiff(patch)
+                  return (
+                    <Dynamic
+                      component={fileComponent}
+                      mode="diff"
+                      before={{
+                        name: props.metadata?.filediff?.file || props.input.filePath,
+                        contents: before || props.input.oldString,
+                      }}
+                      after={{
+                        name: props.metadata?.filediff?.file || props.input.filePath,
+                        contents: after || props.input.newString,
+                      }}
+                    />
+                  )
+                })()}
               </div>
             </ToolFileAccordion>
           </Show>

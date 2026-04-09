@@ -371,7 +371,7 @@ export namespace LLM {
               "x-opencode-client": Flag.OPENCODE_CLIENT,
             }
           : {
-              "User-Agent": `opencode/${Installation.VERSION}`,
+              "User-Agent": `sahyacode/${Installation.VERSION}`,
             }),
         ...input.model.headers,
         ...headers,

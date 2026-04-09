@@ -62,6 +62,7 @@ import { TuiConfigProvider, useTuiConfig } from "./context/tui-config"
 import { TuiConfig } from "@/config/tui"
 import { createTuiApi, TuiPluginRuntime, type RouteMap } from "./plugin"
 import { FormatError, FormatUnknownError } from "@/cli/error"
+import { Voice } from "@/voice"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
@@ -347,6 +348,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     renderer.clearSelection()
   }
   const [terminalTitleEnabled, setTerminalTitleEnabled] = createSignal(kv.get("terminal_title_enabled", true))
+  const [voiceEnabled, setVoiceEnabled] = createSignal(kv.get("voice_enabled", false))
 
   // Update terminal window title based on current route and session
   createEffect(() => {
@@ -869,6 +871,42 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       onSelect: (dialog) => {
         const current = kv.get("diff_wrap_mode", "word")
         kv.set("diff_wrap_mode", current === "word" ? "none" : "word")
+        dialog.clear()
+      },
+    },
+    {
+      title: voiceEnabled() ? "Disable voice mode" : "Enable voice mode",
+      value: "voice.toggle",
+      category: "System",
+      slash: {
+        name: "voice",
+      },
+      onSelect: async (dialog) => {
+        const next = !voiceEnabled()
+        setVoiceEnabled(next)
+        kv.set("voice_enabled", next)
+        if (next) {
+          const availability = await Voice.checkAvailability()
+          if (!availability.stt && !availability.tts) {
+            toast.show({
+              variant: "warning",
+              message: "Voice mode enabled but no STT/TTS capabilities detected. Install sox (`brew install sox`) or set OPENAI_API_KEY.",
+              duration: 5000,
+            })
+          } else {
+            toast.show({
+              variant: "success",
+              message: `Voice mode enabled. STT: ${availability.stt ? "✓" : "✗"}, TTS: ${availability.tts ? "✓" : "✗"}`,
+              duration: 3000,
+            })
+          }
+        } else {
+          toast.show({
+            variant: "info",
+            message: "Voice mode disabled",
+            duration: 2000,
+          })
+        }
         dialog.clear()
       },
     },

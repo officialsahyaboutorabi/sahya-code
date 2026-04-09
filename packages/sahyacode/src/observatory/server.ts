@@ -545,6 +545,460 @@ function replayPage(): string {
 
 let currentWorkDir: string = ""
 
+function immersiveBuildPage(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Building — Observatory</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #ff4f00;
+      --accent-glow: rgba(255,79,0,0.4);
+      --success: #00ff88;
+      --info: #00d4ff;
+    }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d0d0d;
+    }
+    
+    /* Overlay UI */
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 10000;
+    }
+    
+    /* Top Bar */
+    .topbar {
+      position: absolute;
+      top: 20px; left: 20px; right: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(13,13,13,0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 12px 20px;
+      pointer-events: auto;
+    }
+    .topbar-left {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .logo { font-size: 1.4rem; }
+    .title { font-weight: 600; color: #fff; font-size: 0.95rem; }
+    .title span { color: var(--accent); }
+    .status-badge {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.2);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      color: var(--success);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    
+    .topbar-right {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .btn {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: #fff;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn:hover { background: rgba(255,255,255,0.1); border-color: var(--accent); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); }
+    .btn-primary:hover { background: #e04400; }
+    
+    /* Current Action */
+    .action-panel {
+      position: absolute;
+      bottom: 20px; left: 20px;
+      background: rgba(13,13,13,0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 16px 20px;
+      min-width: 320px;
+      pointer-events: auto;
+    }
+    .action-header {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .action-text {
+      font-size: 0.95rem;
+      color: #fff;
+      font-weight: 500;
+    }
+    .action-file {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--accent);
+      margin-top: 6px;
+    }
+    .typing-indicator {
+      display: flex; gap: 4px;
+      margin-top: 10px;
+    }
+    .typing-indicator span {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: typing 1s infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing { 0%,100%{opacity:0.3} 50%{opacity:1} }
+    
+    /* Stats Panel */
+    .stats-panel {
+      position: absolute;
+      bottom: 20px; right: 20px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .stat-box {
+      background: rgba(13,13,13,0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 16px;
+      text-align: center;
+      min-width: 100px;
+    }
+    .stat-value {
+      font-size: 1.4rem; font-weight: 700; color: #fff;
+    }
+    .stat-label {
+      font-size: 0.7rem; color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    
+    /* Simulated Cursor */
+    .ai-cursor {
+      position: absolute;
+      width: 20px; height: 20px;
+      pointer-events: none;
+      z-index: 10001;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: none;
+    }
+    .ai-cursor::before {
+      content: '';
+      position: absolute;
+      width: 0; height: 0;
+      border-left: 6px solid var(--accent);
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      transform: rotate(-45deg);
+    }
+    .ai-cursor::after {
+      content: 'AI';
+      position: absolute;
+      left: 12px; top: 12px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .ai-cursor.active { display: block; }
+    .cursor-trail {
+      position: absolute;
+      width: 4px; height: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    
+    /* Focus Highlight */
+    .focus-highlight {
+      position: absolute;
+      border: 2px solid var(--accent);
+      border-radius: 4px;
+      box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px var(--accent-glow);
+      pointer-events: none;
+      z-index: 9999;
+      transition: all 0.3s ease;
+      display: none;
+    }
+    .focus-highlight::before {
+      content: 'editing';
+      position: absolute;
+      top: -24px; left: 0;
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .focus-highlight.active { display: block; }
+    
+    /* Component Handles */
+    .resize-handle {
+      position: absolute;
+      width: 12px; height: 12px;
+      background: var(--accent);
+      border: 2px solid #fff;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      display: none;
+    }
+    .resize-handle.active { display: block; }
+    .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+    .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+    .resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+    .resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+    
+    /* Website Preview Frame */
+    .preview-container {
+      position: fixed;
+      top: 80px; left: 20px; right: 20px; bottom: 140px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .preview-frame {
+      width: 100%; height: 100%;
+      border: none;
+      background: #fff;
+    }
+    
+    /* Activity Toast */
+    .toast-container {
+      position: absolute;
+      top: 80px; right: 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: rgba(13,13,13,0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #fff;
+      font-size: 0.85rem;
+      animation: slideIn 0.3s ease, fadeOut 0.3s ease 4.7s forwards;
+      max-width: 300px;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateX(20px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-container">
+    <iframe class="preview-frame" id="preview-frame" src="/~observatory/preview"></iframe>
+  </div>
+  
+  <div class="overlay">
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="logo">🔭</span>
+        <span class="title"><span>Observatory</span> — Live Build</span>
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span id="status-text">Building...</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <a href="/~observatory/live" class="btn">📁 Files</a>
+        <a href="/~observatory/replay" class="btn">🎬 Replay</a>
+        <button class="btn btn-primary" onclick="refreshPreview()">🔄 Refresh</button>
+        <a href="/" class="btn">✕ Close</a>
+      </div>
+    </div>
+    
+    <!-- Current Action -->
+    <div class="action-panel">
+      <div class="action-header">🔴 Current Action</div>
+      <div class="action-text" id="action-text">Initializing build...</div>
+      <div class="action-file" id="action-file">—</div>
+      <div class="typing-indicator" id="typing-indicator">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+    
+    <!-- Stats -->
+    <div class="stats-panel">
+      <div class="stat-box">
+        <div class="stat-value" id="file-count">0</div>
+        <div class="stat-label">Files</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="change-count">0</div>
+        <div class="stat-label">Changes</div>
+      </div>
+    </div>
+    
+    <!-- Toasts -->
+    <div class="toast-container" id="toast-container"></div>
+    
+    <!-- Visual Effects -->
+    <div class="ai-cursor" id="ai-cursor"></div>
+    <div class="focus-highlight" id="focus-highlight">
+      <div class="resize-handle nw"></div>
+      <div class="resize-handle ne"></div>
+      <div class="resize-handle sw"></div>
+      <div class="resize-handle se"></div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const actionText = document.getElementById('action-text');
+    const actionFile = document.getElementById('action-file');
+    const statusText = document.getElementById('status-text');
+    const fileCount = document.getElementById('file-count');
+    const changeCount = document.getElementById('change-count');
+    const toastContainer = document.getElementById('toast-container');
+    const aiCursor = document.getElementById('ai-cursor');
+    const focusHighlight = document.getElementById('focus-highlight');
+    const previewFrame = document.getElementById('preview-frame');
+    
+    let files = 0;
+    let changes = 0;
+    
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      toastContainer.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+    }
+    
+    function updateAction(text, file) {
+      actionText.textContent = text;
+      actionFile.textContent = file || '—';
+    }
+    
+    function simulateCursorMove(x, y) {
+      aiCursor.style.left = x + 'px';
+      aiCursor.style.top = y + 'px';
+      aiCursor.classList.add('active');
+      
+      // Add trail
+      const trail = document.createElement('div');
+      trail.className = 'cursor-trail';
+      trail.style.left = (x + 10) + 'px';
+      trail.style.top = (y + 10) + 'px';
+      document.body.appendChild(trail);
+      setTimeout(() => trail.remove(), 500);
+    }
+    
+    function showFocus(element) {
+      const rect = element.getBoundingClientRect();
+      focusHighlight.style.left = rect.left + 'px';
+      focusHighlight.style.top = rect.top + 'px';
+      focusHighlight.style.width = rect.width + 'px';
+      focusHighlight.style.height = rect.height + 'px';
+      focusHighlight.classList.add('active');
+      
+      document.querySelectorAll('.resize-handle').forEach(h => h.classList.add('active'));
+    }
+    
+    function hideFocus() {
+      focusHighlight.classList.remove('active');
+      document.querySelectorAll('.resize-handle').forEach(h => h.classList.remove('active'));
+    }
+    
+    window.refreshPreview = function() {
+      previewFrame.src = previewFrame.src;
+      showToast('Preview refreshed');
+    };
+    
+    // Connect to SSE
+    const es = new EventSource('/~observatory/events');
+    
+    es.onmessage = function(e) {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'reload' && msg.file) {
+          const relPath = msg.file.replace(/^.*\\//, '');
+          files++;
+          changes++;
+          fileCount.textContent = files;
+          changeCount.textContent = changes;
+          
+          updateAction('Writing file...', relPath);
+          showToast('✓ ' + relPath);
+          
+          // Simulate cursor movement
+          const previewRect = previewFrame.getBoundingClientRect();
+          const randomX = previewRect.left + Math.random() * previewRect.width * 0.8;
+          const randomY = previewRect.top + Math.random() * previewRect.height * 0.8;
+          simulateCursorMove(randomX, randomY);
+          
+          setTimeout(() => {
+            hideFocus();
+            updateAction('Waiting...', '—');
+          }, 1000);
+          
+          // Refresh preview after delay
+          setTimeout(() => {
+            previewFrame.src = previewFrame.src;
+          }, 500);
+        }
+      } catch(_) {}
+    };
+    
+    // Load initial stats
+    fetch('/~observatory/status')
+      .then(r => r.json())
+      .then(data => {
+        if (data.files) {
+          files = data.files.length;
+          fileCount.textContent = files;
+        }
+      })
+      .catch(() => {});
+    
+    showToast('Connected to live build');
+    updateAction('Ready', 'Waiting for changes...');
+    statusText.textContent = 'Connected';
+  })();
+  </script>
+</body>
+</html>`
+}
+
 function liveConstructionPage(): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1240,9 +1694,10 @@ function statusPage(projectDir: string, hasIndexHtml: boolean = false): string {
     <div class="divider"></div>
 
     <div class="actions">
-      <a href="/~observatory/live" class="action-btn">🔴 Live Construction</a>
+      <a href="/~observatory/build" class="action-btn primary">🔴 Live Build View</a>
+      <a href="/~observatory/live" class="action-btn">📁 Files & Code</a>
       <a href="/~observatory/replay" class="action-btn">🎬 Watch Replay</a>
-      <button class="action-btn primary" id="move-btn">📁 Move to Original Location</button>
+      <button class="action-btn" id="move-btn">📁 Move to Original Location</button>
     </div>
     <div class="action-result" id="move-result"></div>
 
@@ -1674,6 +2129,12 @@ export function start(workDir: string, startPort = 3456): Promise<string> {
         if (url === "/~observatory/live") {
           res.writeHead(200, { "Content-Type": "text/html" })
           res.end(liveConstructionPage())
+          return
+        }
+
+        if (url === "/~observatory/build") {
+          res.writeHead(200, { "Content-Type": "text/html" })
+          res.end(immersiveBuildPage())
           return
         }
 

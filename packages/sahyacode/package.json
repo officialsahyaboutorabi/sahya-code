@@ -18,8 +18,8 @@
     "db": "bun drizzle-kit"
   },
   "bin": {
-    "sahyacode": "./bin/sahyacode",
-    "opencode": "./bin/sahyacode"
+    "sahyacode": "./bin/sahyacode.cjs",
+    "opencode": "./bin/sahyacode.cjs"
   },
   "exports": {
     "./*": "./src/*.ts"

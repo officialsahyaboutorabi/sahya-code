@@ -1,4 +1,4 @@
-import { Effect, Layer, ServiceMap } from "effect"
+import { Effect, Layer, Context } from "effect"
 import { Bus } from "@/bus"
 import { Session } from "@/session"
 import { Snapshot } from "@/snapshot"
@@ -39,7 +39,7 @@ export namespace ObservatoryCheckpoint {
     readonly remove: (checkpointID: string) => Effect.Effect<void>
   }
 
-  export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/ObservatoryCheckpoint") {}
+  export class Service extends Context.Service<Service, Interface>()("@opencode/ObservatoryCheckpoint") {}
 
   type State = {
     checkpointsDir: string

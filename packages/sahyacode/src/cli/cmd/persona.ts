@@ -16,7 +16,7 @@ import { UI } from "../ui"
 import { Persona } from "../../agent/persona"
 import { Instance } from "../../project/instance"
 import { Global } from "../../global"
-import { Filesystem } from "../../util/filesystem"
+import { Filesystem } from "../../util"
 import { EOL } from "os"
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

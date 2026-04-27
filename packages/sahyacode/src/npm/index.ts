@@ -1,12 +1,12 @@
 import semver from "semver"
 import z from "zod"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@opencode-ai/core/util/error"
 import { Global } from "../global"
-import { Lock } from "../util/lock"
+import { write as lockWrite } from "../util/lock"
 import { Log } from "../util/log"
 import path from "path"
 import { readdir, rm } from "fs/promises"
-import { Filesystem } from "@/util/filesystem"
+import { exists, readJson } from "@/util/filesystem"
 import { Flock } from "@/util/flock"
 import { Arborist } from "@npmcli/arborist"
 
@@ -57,7 +57,7 @@ export namespace Npm {
   }
 
   export async function add(pkg: string) {
-    using _ = await Lock.write(`npm-install:${pkg}`)
+    using _ = await lockWrite(`npm-install:${pkg}`)
     log.info("installing package", {
       pkg,
     })
@@ -111,14 +111,14 @@ export namespace Npm {
       await arb.reify().catch(() => {})
     }
 
-    if (!(await Filesystem.exists(path.join(dir, "node_modules")))) {
+    if (!(await exists(path.join(dir, "node_modules")))) {
       log.info("node_modules missing, reifying")
       await reify()
       return
     }
 
-    const pkg = await Filesystem.readJson(path.join(dir, "package.json")).catch(() => ({}))
-    const lock = await Filesystem.readJson(path.join(dir, "package-lock.json")).catch(() => ({}))
+    const pkg = await readJson(path.join(dir, "package.json")).catch(() => ({}))
+    const lock = await readJson(path.join(dir, "package-lock.json")).catch(() => ({}))
 
     const declared = new Set([
       ...Object.keys(pkg.dependencies || {}),
@@ -155,7 +155,7 @@ export namespace Npm {
       if (files.length === 0) return undefined
       if (files.length === 1) return files[0]
       // Multiple binaries — resolve from package.json bin field like npx does
-      const pkgJson = await Filesystem.readJson<{ bin?: string | Record<string, string> }>(
+      const pkgJson = await readJson<{ bin?: string | Record<string, string> }>(
         path.join(dir, "node_modules", pkg, "package.json"),
       ).catch(() => undefined)
       if (pkgJson?.bin) {

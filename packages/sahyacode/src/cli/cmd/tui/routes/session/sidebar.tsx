@@ -1,74 +1,31 @@
+import { useProject } from "@tui/context/project"
 import { useSync } from "@tui/context/sync"
-import { createMemo, createSignal, Index, onCleanup, onMount, Show } from "solid-js"
+import { createMemo, Show } from "solid-js"
 import { useTheme } from "../../context/theme"
 import { useTuiConfig } from "../../context/tui-config"
-import { Installation } from "@/installation"
+import { InstallationChannel, InstallationVersion } from "@opencode-ai/core/installation/version"
 import { TuiPluginRuntime } from "../../plugin"
+
 import { getScrollAcceleration } from "../../util/scroll"
-import { GHOST_FRAME_INTERVAL_MS, GHOST_FRAMES } from "./ghost-frames"
-
-// \x01 starts a purple segment, \x02 ends it
-type Seg = { text: string; colored: boolean }
-
-function parseLine(raw: string): Seg[] {
-  const segs: Seg[] = []
-  let cur = ""
-  let colored = false
-  for (let i = 0; i < raw.length; i++) {
-    const ch = raw[i]
-    if (ch === "\x01") {
-      if (cur) segs.push({ text: cur, colored })
-      cur = ""
-      colored = true
-    } else if (ch === "\x02") {
-      if (cur) segs.push({ text: cur, colored })
-      cur = ""
-      colored = false
-    } else {
-      cur += ch
-    }
-  }
-  if (cur) segs.push({ text: cur, colored })
-  return segs
-}
-
-// Pre-parse all frames once at module load — never during render
-const PARSED_FRAMES: Seg[][][] = GHOST_FRAMES.map((frame) => frame.map(parseLine))
-
-const GHOST_PURPLE = "#8b5cf6"
-
-function GhostSidebar() {
-  const [idx, setIdx] = createSignal(0)
-
-  onMount(() => {
-    const timer = setInterval(() => {
-      setIdx((i) => (i + 1) % PARSED_FRAMES.length)
-    }, GHOST_FRAME_INTERVAL_MS)
-    onCleanup(() => clearInterval(timer))
-  })
-
-  const frame = createMemo(() => PARSED_FRAMES[idx()])
-
-  return (
-    <box paddingBottom={1}>
-      <Index each={frame()}>
-        {(line) => (
-          <text>
-            {line().map((seg) =>
-              seg.colored ? <span style={{ fg: GHOST_PURPLE }}>{seg.text}</span> : seg.text,
-            )}
-          </text>
-        )}
-      </Index>
-    </box>
-  )
-}
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
+  const project = useProject()
   const sync = useSync()
   const { theme } = useTheme()
   const tuiConfig = useTuiConfig()
   const session = createMemo(() => sync.session.get(props.sessionID))
+  const workspaceStatus = () => {
+    const workspaceID = session()?.workspaceID
+    if (!workspaceID) return "error"
+    return project.workspace.status(workspaceID) ?? "error"
+  }
+  const workspaceLabel = () => {
+    const workspaceID = session()?.workspaceID
+    if (!workspaceID) return "unknown"
+    const info = project.workspace.get(workspaceID)
+    if (!info) return "unknown"
+    return `${info.type}: ${info.name}`
+  }
   const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
 
   return (
@@ -94,7 +51,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
           }}
         >
           <box flexShrink={0} gap={1} paddingRight={1}>
-            <GhostSidebar />
             <TuiPluginRuntime.Slot
               name="sidebar_title"
               mode="single_winner"
@@ -106,6 +62,15 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                 <text fg={theme.text}>
                   <b>{session()!.title}</b>
                 </text>
+                <Show when={InstallationChannel !== "latest"}>
+                  <text fg={theme.textMuted}>{props.sessionID}</text>
+                </Show>
+                <Show when={session()!.workspaceID}>
+                  <text fg={theme.textMuted}>
+                    <span style={{ fg: workspaceStatus() === "connected" ? theme.success : theme.error }}>●</span>{" "}
+                    {workspaceLabel()}
+                  </text>
+                </Show>
                 <Show when={session()!.share?.url}>
                   <text fg={theme.textMuted}>{session()!.share!.url}</text>
                 </Show>
@@ -118,11 +83,11 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
         <box flexShrink={0} gap={1} paddingTop={1}>
           <TuiPluginRuntime.Slot name="sidebar_footer" mode="single_winner" session_id={props.sessionID}>
             <text fg={theme.textMuted}>
-              <span style={{ fg: theme.success }}>•</span> <b>Sahya</b>
+              <span style={{ fg: theme.success }}>•</span> <b>Open</b>
               <span style={{ fg: theme.text }}>
                 <b>Code</b>
               </span>{" "}
-              <span>v{Installation.VERSION}</span>
+              <span>{InstallationVersion}</span>
             </text>
           </TuiPluginRuntime.Slot>
         </box>

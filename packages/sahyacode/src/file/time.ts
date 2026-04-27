@@ -1,10 +1,10 @@
-import { DateTime, Effect, Layer, Option, Semaphore, ServiceMap } from "effect"
-import { InstanceState } from "@/effect/instance-state"
+import { DateTime, Effect, Layer, Option, Semaphore, Context } from "effect"
+import { InstanceState } from "@/effect"
 import { makeRuntime } from "@/effect/run-service"
 import { AppFileSystem } from "@/filesystem"
 import { Flag } from "@/flag/flag"
 import type { SessionID } from "@/session/schema"
-import { Filesystem } from "@/util/filesystem"
+import { Filesystem } from "@/util"
 import { Log } from "../util/log"
 
 export namespace FileTime {
@@ -37,7 +37,7 @@ export namespace FileTime {
     readonly withLock: <T>(filepath: string, fn: () => Promise<T>) => Effect.Effect<T>
   }
 
-  export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/FileTime") {}
+  export class Service extends Context.Service<Service, Interface>()("@opencode/FileTime") {}
 
   export const layer = Layer.effect(
     Service,

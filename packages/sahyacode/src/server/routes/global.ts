@@ -1,22 +1,24 @@
 import { Hono, type Context } from "hono"
 import { describeRoute, resolver, validator } from "hono-openapi"
 import { streamSSE } from "hono/streaming"
+import { Effect, Schema } from "effect"
 import z from "zod"
 import { BusEvent } from "@/bus/bus-event"
 import { SyncEvent } from "@/sync"
 import { GlobalBus } from "@/bus/global"
+import { AppRuntime } from "@/effect/app-runtime"
 import { AsyncQueue } from "@/util/queue"
 import { Instance } from "../../project/instance"
 import { Installation } from "@/installation"
-import semver from "semver"
-import { Log } from "../../util/log"
+import { InstallationVersion } from "@opencode-ai/core/installation/version"
+import { Log } from "../../util"
 import { lazy } from "../../util/lazy"
-import { Config } from "../../config/config"
+import { Config } from "../../config"
 import { errors } from "../error"
 
 const log = Log.create({ service: "server" })
 
-export const GlobalDisposedEvent = BusEvent.define("global.disposed", z.object({}))
+export const GlobalDisposedEvent = BusEvent.define("global.disposed", Schema.Struct({}))
 
 async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>) => () => void) {
   return streamSSE(c, async (stream) => {
@@ -74,7 +76,7 @@ export const GlobalRoutes = lazy(() =>
       "/health",
       describeRoute({
         summary: "Get health",
-        description: "Get health information about the SahyaCode server.",
+        description: "Get health information about the OpenCode server.",
         operationId: "global.health",
         responses: {
           200: {
@@ -88,14 +90,14 @@ export const GlobalRoutes = lazy(() =>
         },
       }),
       async (c) => {
-        return c.json({ healthy: true, version: Installation.VERSION })
+        return c.json({ healthy: true, version: InstallationVersion })
       },
     )
     .get(
       "/event",
       describeRoute({
         summary: "Get global events",
-        description: "Subscribe to global events from the SahyaCode system using server-sent events.",
+        description: "Subscribe to global events from the OpenCode system using server-sent events.",
         operationId: "global.event",
         responses: {
           200: {
@@ -106,7 +108,9 @@ export const GlobalRoutes = lazy(() =>
                   z
                     .object({
                       directory: z.string(),
-                      payload: BusEvent.payloads(),
+                      project: z.string().optional(),
+                      workspace: z.string().optional(),
+                      payload: z.union([...BusEvent.payloads(), ...SyncEvent.payloads()]),
                     })
                     .meta({
                       ref: "GlobalEvent",
@@ -133,94 +137,48 @@ export const GlobalRoutes = lazy(() =>
       },
     )
     .get(
-      "/sync-event",
-      describeRoute({
-        summary: "Subscribe to global sync events",
-        description: "Get global sync events",
-        operationId: "global.sync-event.subscribe",
-        responses: {
-          200: {
-            description: "Event stream",
-            content: {
-              "text/event-stream": {
-                schema: resolver(
-                  z
-                    .object({
-                      payload: SyncEvent.payloads(),
-                    })
-                    .meta({
-                      ref: "SyncEvent",
-                    }),
-                ),
-              },
-            },
-          },
-        },
-      }),
-      async (c) => {
-        log.info("global sync event connected")
-        c.header("Cache-Control", "no-cache, no-transform")
-        c.header("X-Accel-Buffering", "no")
-        c.header("X-Content-Type-Options", "nosniff")
-        return streamEvents(c, (q) => {
-          return SyncEvent.subscribeAll(({ def, event }) => {
-            // TODO: don't pass def, just pass the type (and it should
-            // be versioned)
-            q.push(
-              JSON.stringify({
-                payload: {
-                  ...event,
-                  type: SyncEvent.versionedType(def.type, def.version),
-                },
-              }),
-            )
-          })
-        })
-      },
-    )
-    .get(
       "/config",
       describeRoute({
         summary: "Get global configuration",
-        description: "Retrieve the current global SahyaCode configuration settings and preferences.",
+        description: "Retrieve the current global OpenCode configuration settings and preferences.",
         operationId: "global.config.get",
         responses: {
           200: {
             description: "Get global config info",
             content: {
               "application/json": {
-                schema: resolver(Config.Info),
+                schema: resolver(Config.Info.zod),
               },
             },
           },
         },
       }),
       async (c) => {
-        return c.json(await Config.getGlobal())
+        return c.json(await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.getGlobal())))
       },
     )
     .patch(
       "/config",
       describeRoute({
         summary: "Update global configuration",
-        description: "Update global SahyaCode configuration settings and preferences.",
+        description: "Update global OpenCode configuration settings and preferences.",
         operationId: "global.config.update",
         responses: {
           200: {
             description: "Successfully updated global config",
             content: {
               "application/json": {
-                schema: resolver(Config.Info),
+                schema: resolver(Config.Info.zod),
               },
             },
           },
           ...errors(400),
         },
       }),
-      validator("json", Config.Info),
+      validator("json", Config.Info.zod),
       async (c) => {
         const config = c.req.valid("json")
-        const next = await Config.updateGlobal(config)
+        const next = await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.updateGlobal(config)))
         return c.json(next)
       },
     )
@@ -228,7 +186,7 @@ export const GlobalRoutes = lazy(() =>
       "/dispose",
       describeRoute({
         summary: "Dispose instance",
-        description: "Clean up and dispose all SahyaCode instances, releasing all resources.",
+        description: "Clean up and dispose all OpenCode instances, releasing all resources.",
         operationId: "global.dispose",
         responses: {
           200: {
@@ -289,52 +247,41 @@ export const GlobalRoutes = lazy(() =>
         }),
       ),
       async (c) => {
-        let method = await Installation.method()
-        // Default to curl method if detection fails (most common installation method)
-        if (method === "unknown") {
-          method = "curl"
-        }
-        const target = c.req.valid("json").target || (await Installation.latest(method))
+        const result = await AppRuntime.runPromise(
+          Installation.Service.use((svc) =>
+            Effect.gen(function* () {
+              const method = yield* svc.method()
+              if (method === "unknown") {
+                return { success: false as const, status: 400 as const, error: "Unknown installation method" }
+              }
 
-        // Strip 'v' prefix for semver comparison
-        const currentVersion = Installation.VERSION.replace(/^v/, "")
-        const targetVersion = target.replace(/^v/, "")
-        if (currentVersion === targetVersion) {
-          return c.json({ success: false as const, error: `v${targetVersion} is already installed — no upgrade needed` })
+              const target = c.req.valid("json").target || (yield* svc.latest(method))
+              const result = yield* Effect.catch(
+                svc.upgrade(method, target).pipe(Effect.as({ success: true as const, version: target })),
+                (err) =>
+                  Effect.succeed({
+                    success: false as const,
+                    status: 500 as const,
+                    error: err instanceof Error ? err.message : String(err),
+                  }),
+              )
+              if (!result.success) return result
+              return { ...result, status: 200 as const }
+            }),
+          ),
+        )
+        if (!result.success) {
+          return c.json({ success: false, error: result.error }, result.status)
         }
-        // Guard against downgrade: if running a NEWER version than what version.txt reports,
-        // the release hasn't been published yet. Refuse rather than 404-ing the install script.
-        if (semver.gt(currentVersion, targetVersion)) {
-          return c.json({ success: false as const, error: `Already on v${currentVersion} which is newer than v${targetVersion} — no downgrade needed` })
-        }
-
-        const result = await Installation.upgrade(method, target)
-          .then(() => ({ success: true as const, version: target }))
-          .catch((e) => {
-            // Effect's TaggedErrorClass has an empty .message; extract .stderr directly.
-            let errorMsg: string
-            if (e instanceof Installation.UpgradeFailedError) {
-              errorMsg = e.stderr || "Upgrade process failed (no details)"
-            } else if (e instanceof Error) {
-              errorMsg = e.message || "Upgrade failed"
-            } else {
-              errorMsg = String(e) || "Upgrade failed"
-            }
-            return { success: false as const, error: errorMsg }
-          })
-        if (result.success) {
-          GlobalBus.emit("event", {
-            directory: "global",
-            payload: {
-              type: Installation.Event.Updated.type,
-              properties: { version: target },
-            },
-          })
-        }
-        // Always return 200 — the SDK client only puts the body in result.data
-        // for 2xx responses; non-2xx ends up in result.error as a raw object,
-        // making error message extraction unreliable.
-        return c.json(result)
+        const target = result.version
+        GlobalBus.emit("event", {
+          directory: "global",
+          payload: {
+            type: Installation.Event.Updated.type,
+            properties: { version: target },
+          },
+        })
+        return c.json({ success: true, version: target })
       },
     ),
 )

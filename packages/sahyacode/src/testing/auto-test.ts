@@ -13,7 +13,7 @@
 import path from "path"
 import { execSync } from "child_process"
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs"
-import { Filesystem } from "../util/filesystem"
+import { Filesystem } from "../util"
 import { Log } from "../util/log"
 import { Config } from "../config/config"
 import { generateText } from "ai"

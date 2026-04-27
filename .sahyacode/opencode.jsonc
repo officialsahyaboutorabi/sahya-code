@@ -1,13 +1,9 @@
 {
-  "$schema": "https://sbgpt.qzz.io/config.json",
-  "provider": {
-    "opencode": {
-      "options": {},
-    },
-  },
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {},
   "permission": {
     "edit": {
-      "packages/sahyacode/migration/*": "deny",
+      "packages/opencode/migration/*": "deny",
     },
   },
   "mcp": {},

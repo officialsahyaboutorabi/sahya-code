@@ -32,3 +32,14 @@ export function Logo() {
     </box>
   )
 }
+
+export function GoLogo() {
+  const { theme } = useTheme()
+  return (
+    <box flexDirection="column" alignItems="center">
+      <text fg={theme.primary} attributes={TextAttributes.BOLD} selectable={false}>
+        GO
+      </text>
+    </box>
+  )
+}

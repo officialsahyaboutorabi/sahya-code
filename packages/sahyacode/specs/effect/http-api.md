@@ -41,7 +41,7 @@ Use this checklist for each small HttpApi migration PR:
 5. Reuse existing services directly. If a service returns plain objects, use `Schema.Struct`; use `Schema.Class` only when handlers return actual class instances.
 6. Keep legacy Hono routes and `.zod` compatibility in place for SDK/OpenAPI generation.
 7. Add tests that hit the Hono-mounted bridge via `InstanceRoutes`, not only the raw `HttpApi` web handler, when the route depends on auth or instance context.
-8. Run `bun typecheck` from `packages/opencode`, relevant `bun run test:ci ...` tests from `packages/opencode`, and `./packages/sdk/js/script/build.ts` from the repo root.
+8. Run `bun typecheck` from `packages/sahyacode`, relevant `bun run test:ci ...` tests from `packages/sahyacode`, and `./packages/sdk/js/script/build.ts` from the repo root.
 
 ## Hono Deletion Checklist
 

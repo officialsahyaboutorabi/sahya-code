@@ -1,6 +1,6 @@
 # Route handler effectification
 
-Practical reference for converting server route handlers in `packages/opencode` to a single `AppRuntime.runPromise(Effect.gen(...))` body.
+Practical reference for converting server route handlers in `packages/sahyacode` to a single `AppRuntime.runPromise(Effect.gen(...))` body.
 
 ## Goal
 

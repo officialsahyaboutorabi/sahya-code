@@ -29,12 +29,12 @@ function validateCredential<A, E, R>(
   credential: { readonly username: string; readonly password: typeof emptyCredential.password },
 ) {
   return Effect.gen(function* () {
-    if (!Flag.OPENCODE_SERVER_PASSWORD) return yield* effect
+    if (!Flag.SAHYACODE_SERVER_PASSWORD) return yield* effect
 
-    if (credential.username !== (Flag.OPENCODE_SERVER_USERNAME ?? "opencode")) {
+    if (credential.username !== (Flag.SAHYACODE_SERVER_USERNAME ?? "opencode")) {
       return yield* new Unauthorized({ message: "Unauthorized" })
     }
-    if (Redacted.value(credential.password) !== Flag.OPENCODE_SERVER_PASSWORD) {
+    if (Redacted.value(credential.password) !== Flag.SAHYACODE_SERVER_PASSWORD) {
       return yield* new Unauthorized({ message: "Unauthorized" })
     }
     return yield* effect

@@ -1,6 +1,6 @@
 # Effect patterns
 
-Practical reference for new and migrated Effect code in `packages/opencode`.
+Practical reference for new and migrated Effect code in `packages/sahyacode`.
 
 ## Choose scope
 

@@ -1740,7 +1740,7 @@ it.live("does not loop empty assistant turns for a simple reply", () =>
       const sessions = yield* Session.Service
       const session = yield* sessions.create({ title: "Prompt regression" })
 
-      yield* llm.text("packages/opencode/src/session/processor.ts")
+      yield* llm.text("packages/sahyacode/src/session/processor.ts")
 
       const result = yield* prompt.prompt({
         sessionID: session.id,

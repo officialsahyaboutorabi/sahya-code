@@ -28,16 +28,16 @@ export const NotFoundError = NamedError.create(
 const log = Log.create({ service: "db" })
 
 export function getChannelPath() {
-  if (["latest", "beta", "prod"].includes(InstallationChannel) || Flag.OPENCODE_DISABLE_CHANNEL_DB)
+  if (["latest", "beta", "prod"].includes(InstallationChannel) || Flag.SAHYACODE_DISABLE_CHANNEL_DB)
     return path.join(Global.Path.data, "opencode.db")
   const safe = InstallationChannel.replace(/[^a-zA-Z0-9._-]/g, "-")
   return path.join(Global.Path.data, `opencode-${safe}.db`)
 }
 
 export const Path = iife(() => {
-  if (Flag.OPENCODE_DB) {
-    if (Flag.OPENCODE_DB === ":memory:" || path.isAbsolute(Flag.OPENCODE_DB)) return Flag.OPENCODE_DB
-    return path.join(Global.Path.data, Flag.OPENCODE_DB)
+  if (Flag.SAHYACODE_DB) {
+    if (Flag.SAHYACODE_DB === ":memory:" || path.isAbsolute(Flag.SAHYACODE_DB)) return Flag.SAHYACODE_DB
+    return path.join(Global.Path.data, Flag.SAHYACODE_DB)
   }
   return getChannelPath()
 })
@@ -103,7 +103,7 @@ export const Client = lazy(() => {
       count: entries.length,
       mode: typeof OPENCODE_MIGRATIONS !== "undefined" ? "bundled" : "dev",
     })
-    if (Flag.OPENCODE_SKIP_MIGRATIONS) {
+    if (Flag.SAHYACODE_SKIP_MIGRATIONS) {
       for (const item of entries) {
         item.sql = "select 1;"
       }

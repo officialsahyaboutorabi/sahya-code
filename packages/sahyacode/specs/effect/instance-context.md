@@ -157,7 +157,7 @@ Direct legacy usage means any source file that still calls one of:
 - `Instance.reload(...)`
 - `Instance.dispose()` / `Instance.disposeAll()`
 
-Current total: `56` files in `packages/opencode/src`.
+Current total: `56` files in `packages/sahyacode/src`.
 
 ### Core bridge and plumbing
 

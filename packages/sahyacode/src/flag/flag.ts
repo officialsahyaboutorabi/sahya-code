@@ -17,10 +17,6 @@ export namespace Flag {
   export const SAHYACODE_AUTO_SHARE = truthy("SAHYACODE_AUTO_SHARE")
   export const SAHYACODE_GIT_BASH_PATH = process.env["SAHYACODE_GIT_BASH_PATH"]
   export const SAHYACODE_CONFIG = process.env["SAHYACODE_CONFIG"]
-  export declare const SAHYACODE_PURE: boolean
-  export declare const SAHYACODE_TUI_CONFIG: string | undefined
-  export declare const SAHYACODE_CONFIG_DIR: string | undefined
-  export declare const SAHYACODE_PLUGIN_META_FILE: string | undefined
   export const SAHYACODE_CONFIG_CONTENT = process.env["SAHYACODE_CONFIG_CONTENT"]
   export const SAHYACODE_DISABLE_AUTOUPDATE = truthy("SAHYACODE_DISABLE_AUTOUPDATE")
   export const SAHYACODE_ALWAYS_NOTIFY_UPDATE = truthy("SAHYACODE_ALWAYS_NOTIFY_UPDATE")
@@ -40,11 +36,8 @@ export namespace Flag {
     SAHYACODE_DISABLE_CLAUDE_CODE || truthy("SAHYACODE_DISABLE_CLAUDE_CODE_SKILLS")
   export const SAHYACODE_DISABLE_EXTERNAL_SKILLS =
     SAHYACODE_DISABLE_CLAUDE_CODE_SKILLS || truthy("SAHYACODE_DISABLE_EXTERNAL_SKILLS")
-  export declare const SAHYACODE_DISABLE_PROJECT_CONFIG: boolean
   export const SAHYACODE_FAKE_VCS = process.env["SAHYACODE_FAKE_VCS"]
-  export declare const SAHYACODE_CLIENT: string
   export const SAHYACODE_SERVER_PASSWORD = process.env["SAHYACODE_SERVER_PASSWORD"]
-  export const SAHYACODE_SERVER_USERNAME = process.env["SAHYACODE_SERVER_USERNAME"]
   export const SAHYACODE_ENABLE_QUESTION_TOOL = truthy("SAHYACODE_ENABLE_QUESTION_TOOL")
 
   // Experimental
@@ -88,93 +81,23 @@ export namespace Flag {
     const parsed = Number(value)
     return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
   }
-
-  export declare const SAHYACODE_DISABLE_PROJECT_CONFIG: boolean
-  export declare const SAHYACODE_CONFIG_DIR: string | undefined
-  export declare const SAHYACODE_SERVER_USERNAME: string | undefined
 }
 
-// Dynamic getter for SAHYACODE_DISABLE_PROJECT_CONFIG
-// This must be evaluated at access time, not module load time,
-// because external tooling may set this env var at runtime
-Object.defineProperty(Flag, "SAHYACODE_DISABLE_PROJECT_CONFIG", {
-  get() {
-    return truthy("SAHYACODE_DISABLE_PROJECT_CONFIG")
-  },
-  enumerable: true,
-  configurable: false,
-})
+// Dynamic getters for SAHYACODE flags with OPENCODE fallback
+// These must be evaluated at access time, not module load time,
+// because external tooling may set these env vars at runtime
 
-// Dynamic getter for SAHYACODE_TUI_CONFIG
-// This must be evaluated at access time, not module load time,
-// because tests and external tooling may set this env var at runtime
-Object.defineProperty(Flag, "SAHYACODE_TUI_CONFIG", {
-  get() {
-    return process.env["SAHYACODE_TUI_CONFIG"]
-  },
-  enumerable: true,
-  configurable: false,
-})
-
-// Dynamic getter for SAHYACODE_CONFIG_DIR
-// This must be evaluated at access time, not module load time,
-// because external tooling may set this env var at runtime
-Object.defineProperty(Flag, "SAHYACODE_CONFIG_DIR", {
-  get() {
-    return process.env["SAHYACODE_CONFIG_DIR"]
-  },
-  enumerable: true,
-  configurable: false,
-})
-
-// Dynamic getter for SAHYACODE_PURE
-// This must be evaluated at access time, not module load time,
-// because the CLI can set this flag at runtime
 Object.defineProperty(Flag, "SAHYACODE_PURE", {
   get() {
-    return truthy("SAHYACODE_PURE")
+    return truthy("SAHYACODE_PURE") || truthy("OPENCODE_PURE")
   },
   enumerable: true,
   configurable: false,
 })
 
-// Dynamic getter for SAHYACODE_PLUGIN_META_FILE
-// This must be evaluated at access time, not module load time,
-// because tests and external tooling may set this env var at runtime
-Object.defineProperty(Flag, "SAHYACODE_PLUGIN_META_FILE", {
+Object.defineProperty(Flag, "SAHYACODE_TUI_CONFIG", {
   get() {
-    return process.env["SAHYACODE_PLUGIN_META_FILE"]
-  },
-  enumerable: true,
-  configurable: false,
-})
-
-// Dynamic getter for SAHYACODE_CLIENT
-// This must be evaluated at access time, not module load time,
-// because some commands override the client at runtime
-Object.defineProperty(Flag, "SAHYACODE_CLIENT", {
-  get() {
-    return process.env["SAHYACODE_CLIENT"] ?? "cli"
-  },
-  enumerable: true,
-  configurable: false,
-})
-
-// Dynamic getter for SAHYACODE_CLIENT
-// This must be evaluated at access time, not module load time,
-// because some commands override the client at runtime
-Object.defineProperty(Flag, "SAHYACODE_CLIENT", {
-  get() {
-    return process.env["SAHYACODE_CLIENT"] ?? process.env["SAHYACODE_CLIENT"] ?? "cli"
-  },
-  enumerable: true,
-  configurable: false,
-})
-
-// SahyaCode flags (aliases for SAHYACODE flags with legacy support)
-Object.defineProperty(Flag, "SAHYACODE_DISABLE_PROJECT_CONFIG", {
-  get() {
-    return truthy("SAHYACODE_DISABLE_PROJECT_CONFIG") || truthy("SAHYACODE_DISABLE_PROJECT_CONFIG")
+    return process.env["SAHYACODE_TUI_CONFIG"] || process.env["OPENCODE_TUI_CONFIG"]
   },
   enumerable: true,
   configurable: false,
@@ -182,7 +105,31 @@ Object.defineProperty(Flag, "SAHYACODE_DISABLE_PROJECT_CONFIG", {
 
 Object.defineProperty(Flag, "SAHYACODE_CONFIG_DIR", {
   get() {
-    return process.env["SAHYACODE_CONFIG_DIR"] || process.env["SAHYACODE_CONFIG_DIR"]
+    return process.env["SAHYACODE_CONFIG_DIR"] || process.env["OPENCODE_CONFIG_DIR"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "SAHYACODE_PLUGIN_META_FILE", {
+  get() {
+    return process.env["SAHYACODE_PLUGIN_META_FILE"] || process.env["OPENCODE_PLUGIN_META_FILE"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "SAHYACODE_DISABLE_PROJECT_CONFIG", {
+  get() {
+    return truthy("SAHYACODE_DISABLE_PROJECT_CONFIG") || truthy("OPENCODE_DISABLE_PROJECT_CONFIG")
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "SAHYACODE_CLIENT", {
+  get() {
+    return process.env["SAHYACODE_CLIENT"] || process.env["OPENCODE_CLIENT"] || "cli"
   },
   enumerable: true,
   configurable: false,
@@ -190,7 +137,7 @@ Object.defineProperty(Flag, "SAHYACODE_CONFIG_DIR", {
 
 Object.defineProperty(Flag, "SAHYACODE_SERVER_USERNAME", {
   get() {
-    return process.env["SAHYACODE_SERVER_USERNAME"] || process.env["SAHYACODE_SERVER_USERNAME"]
+    return process.env["SAHYACODE_SERVER_USERNAME"] || process.env["OPENCODE_SERVER_USERNAME"]
   },
   enumerable: true,
   configurable: false,

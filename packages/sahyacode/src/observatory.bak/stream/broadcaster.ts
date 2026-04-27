@@ -5,7 +5,7 @@ import { SessionProcessor } from "@/session/processor"
 import { SessionStatus } from "@/session/status"
 import { MessageV2 } from "@/session/message-v2"
 import { SessionID, MessageID } from "@/session/schema"
-import { Effect, Layer, ServiceMap, Stream } from "effect"
+import { Effect, Layer, Context, Stream } from "effect"
 import { Observable, Subject } from "./observable"
 import { ObservatoryEvent, ActionEntry, ThoughtEntry, AgentState } from "./events"
 import { Log } from "@/util/log"
@@ -23,7 +23,7 @@ export namespace ObservatoryBroadcaster {
     readonly step: (sessionID: SessionID) => Effect.Effect<void>
   }
 
-  export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/ObservatoryBroadcaster") {}
+  export class Service extends Context.Service<Service, Interface>()("@opencode/ObservatoryBroadcaster") {}
 
   type State = {
     states: Map<string, AgentState>

@@ -1,5 +1,5 @@
-import { Effect, Layer, Scope, ServiceMap } from "effect"
-import { InstanceState } from "@/effect/instance-state"
+import { Effect, Layer, Scope, Context } from "effect"
+import { InstanceState } from "@/effect"
 import { makeRuntime } from "@/effect/run-service"
 import type { InstanceContext } from "@/project/instance"
 import { Bus } from "@/bus"
@@ -62,7 +62,7 @@ export namespace CodeIntelligence {
     readonly isSupported: (file: string) => Effect.Effect<boolean>
   }
 
-  export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/CodeIntelligence") {}
+  export class Service extends Context.Service<Service, Interface>()("@opencode/CodeIntelligence") {}
 
   export const layer = Layer.effect(
     Service,

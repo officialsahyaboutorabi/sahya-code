@@ -95,3 +95,13 @@ export const FrontmatterError = NamedError.create(
     message: z.string(),
   }),
 )
+
+export const ConfigMarkdown = {
+  parse,
+  FrontmatterError,
+  files,
+  shell,
+  fallbackSanitization,
+  FILE_REGEX,
+  SHELL_REGEX,
+}

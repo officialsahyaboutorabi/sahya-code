@@ -2,7 +2,7 @@ import type { Argv } from "yargs"
 import { UI } from "../ui"
 import * as prompts from "@clack/prompts"
 import { Installation } from "../../installation"
-import { Filesystem } from "../../util/filesystem"
+import { Filesystem } from "../../util"
 import path from "path"
 
 export const UpgradeCommand = {

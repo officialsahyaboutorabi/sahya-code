@@ -1,6 +1,6 @@
 import { render, TimeToFirstDraw, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { Clipboard } from "@tui/util/clipboard"
-import { Selection } from "@tui/util/selection"
+import * as Clipboard from "@tui/util/clipboard"
+import * as Selection from "@tui/util/selection"
 import { createCliRenderer, MouseButton, type CliRendererConfig } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
 import {
@@ -14,20 +14,23 @@ import {
   batch,
   Show,
   on,
-  onCleanup,
 } from "solid-js"
 import { win32DisableProcessedInput, win32InstallCtrlCGuard } from "./win32"
-import { Flag } from "@/flag/flag"
+import { Flag } from "@opencode-ai/core/flag/flag"
 import semver from "semver"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
 import { DialogProvider as DialogProviderList } from "@tui/component/dialog-provider"
 import { ErrorComponent } from "@tui/component/error-component"
 import { PluginRouteMissing } from "@tui/component/plugin-route-missing"
+import { ProjectProvider } from "@tui/context/project"
+import { EditorContextProvider } from "@tui/context/editor"
+import { useEvent } from "@tui/context/event"
 import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { StartupLoading } from "@tui/component/startup-loading"
 import { SyncProvider, useSync } from "@tui/context/sync"
 import { LocalProvider, useLocal } from "@tui/context/local"
-import { DialogModel, useConnected } from "@tui/component/dialog-model"
+import { DialogModel } from "@tui/component/dialog-model"
+import { useConnected } from "@tui/component/use-connected"
 import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogThemeList } from "@tui/component/dialog-theme-list"
@@ -35,12 +38,11 @@ import { DialogHelp } from "./ui/dialog-help"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
-import { DialogWorkspaceList } from "@tui/component/dialog-workspace-list"
+import { DialogConsoleOrg } from "@tui/component/dialog-console-org"
 import { KeybindProvider, useKeybind } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
 import { Session } from "@tui/routes/session"
-import { ObservatoryRoute } from "@tui/routes/observatory"
 import { PromptHistoryProvider } from "./component/prompt/history"
 import { FrecencyProvider } from "./component/prompt/frecency"
 import { PromptStashProvider } from "./component/prompt/stash"
@@ -51,91 +53,30 @@ import { ExitProvider, useExit } from "./context/exit"
 import { Session as SessionApi } from "@/session"
 import { TuiEvent } from "./event"
 import { KVProvider, useKV } from "./context/kv"
-import { Provider } from "@/provider/provider"
+import { Provider } from "@/provider"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
 import open from "open"
-import * as ObservatoryServer from "@/observatory/server"
-import { Instance } from "@/project/instance"
-import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { TuiConfigProvider, useTuiConfig } from "./context/tui-config"
-import { TuiConfig } from "@/config/tui"
+import { TuiConfig } from "@/cli/cmd/tui/config/tui"
 import { createTuiApi, TuiPluginRuntime, type RouteMap } from "./plugin"
 import { FormatError, FormatUnknownError } from "@/cli/error"
-import { Voice } from "@/voice"
-
-async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
-  // can't set raw mode if not a TTY
-  if (!process.stdin.isTTY) return "dark"
-
-  return new Promise((resolve) => {
-    let timeout: NodeJS.Timeout
-
-    const cleanup = () => {
-      process.stdin.setRawMode(false)
-      process.stdin.removeListener("data", handler)
-      clearTimeout(timeout)
-    }
-
-    const handler = (data: Buffer) => {
-      const str = data.toString()
-      const match = str.match(/\x1b]11;([^\x07\x1b]+)/)
-      if (match) {
-        cleanup()
-        const color = match[1]
-        // Parse RGB values from color string
-        // Formats: rgb:RR/GG/BB or #RRGGBB or rgb(R,G,B)
-        let r = 0,
-          g = 0,
-          b = 0
-
-        if (color.startsWith("rgb:")) {
-          const parts = color.substring(4).split("/")
-          r = parseInt(parts[0], 16) >> 8 // Convert 16-bit to 8-bit
-          g = parseInt(parts[1], 16) >> 8 // Convert 16-bit to 8-bit
-          b = parseInt(parts[2], 16) >> 8 // Convert 16-bit to 8-bit
-        } else if (color.startsWith("#")) {
-          r = parseInt(color.substring(1, 3), 16)
-          g = parseInt(color.substring(3, 5), 16)
-          b = parseInt(color.substring(5, 7), 16)
-        } else if (color.startsWith("rgb(")) {
-          const parts = color.substring(4, color.length - 1).split(",")
-          r = parseInt(parts[0])
-          g = parseInt(parts[1])
-          b = parseInt(parts[2])
-        }
-
-        // Calculate luminance using relative luminance formula
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-
-        // Determine if dark or light based on luminance threshold
-        resolve(luminance > 0.5 ? "light" : "dark")
-      }
-    }
-
-    process.stdin.setRawMode(true)
-    process.stdin.on("data", handler)
-    process.stdout.write("\x1b]11;?\x07")
-
-    timeout = setTimeout(() => {
-      cleanup()
-      resolve("dark")
-    }, 1000)
-  })
-}
 
 import type { EventSource } from "./context/sdk"
 import { DialogVariant } from "./component/dialog-variant"
 
 function rendererConfig(_config: TuiConfig.Info): CliRendererConfig {
+  const mouseEnabled = !Flag.OPENCODE_DISABLE_MOUSE && (_config.mouse ?? true)
+
   return {
     externalOutputMode: "passthrough",
     targetFps: 60,
     gatherStats: false,
     exitOnCtrlC: false,
-    useKittyKeyboard: { events: process.platform === "win32" },
+    useKittyKeyboard: {},
     autoFocus: false,
     openConsoleOnError: false,
+    useMouse: mouseEnabled,
     consoleOptions: {
       keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
       onCopySelection: (text) => {
@@ -175,14 +116,9 @@ export function tui(input: {
   events?: EventSource
 }) {
   // promise to prevent immediate exit
+  // oxlint-disable-next-line no-async-promise-executor -- intentional: async executor used for sequential setup before resolve
   return new Promise<void>(async (resolve) => {
     const unguard = win32InstallCtrlCGuard()
-    win32DisableProcessedInput()
-
-    const mode = await getTerminalBackgroundColor()
-
-    // Re-clear after getTerminalBackgroundColor() — setRawMode(false) restores
-    // the original console mode which re-enables ENABLE_PROCESSED_INPUT.
     win32DisableProcessedInput()
 
     const onExit = async () => {
@@ -195,6 +131,7 @@ export function tui(input: {
     }
 
     const renderer = await createCliRenderer(rendererConfig(input.config))
+    const mode = (await renderer.waitForThemeMode(1000)) ?? "dark"
 
     await render(() => {
       return (
@@ -207,7 +144,16 @@ export function tui(input: {
             <ExitProvider onBeforeExit={onBeforeExit} onExit={onExit}>
               <KVProvider>
                 <ToastProvider>
-                  <RouteProvider>
+                  <RouteProvider
+                    initialRoute={
+                      input.args.continue
+                        ? {
+                            type: "session",
+                            sessionID: "dummy",
+                          }
+                        : undefined
+                    }
+                  >
                     <TuiConfigProvider config={input.config}>
                       <SDKProvider
                         url={input.url}
@@ -216,27 +162,31 @@ export function tui(input: {
                         headers={input.headers}
                         events={input.events}
                       >
-                        <SyncProvider>
-                          <ThemeProvider mode={mode}>
-                            <LocalProvider>
-                              <KeybindProvider>
-                                <PromptStashProvider>
-                                  <DialogProvider>
-                                    <CommandProvider>
-                                      <FrecencyProvider>
-                                        <PromptHistoryProvider>
-                                          <PromptRefProvider>
-                                            <App onSnapshot={input.onSnapshot} />
-                                          </PromptRefProvider>
-                                        </PromptHistoryProvider>
-                                      </FrecencyProvider>
-                                    </CommandProvider>
-                                  </DialogProvider>
-                                </PromptStashProvider>
-                              </KeybindProvider>
-                            </LocalProvider>
-                          </ThemeProvider>
-                        </SyncProvider>
+                        <ProjectProvider>
+                          <SyncProvider>
+                            <ThemeProvider mode={mode}>
+                              <LocalProvider>
+                                <KeybindProvider>
+                                  <PromptStashProvider>
+                                    <DialogProvider>
+                                      <CommandProvider>
+                                        <FrecencyProvider>
+                                          <PromptHistoryProvider>
+                                            <PromptRefProvider>
+                                              <EditorContextProvider>
+                                                <App onSnapshot={input.onSnapshot} />
+                                              </EditorContextProvider>
+                                            </PromptRefProvider>
+                                          </PromptHistoryProvider>
+                                        </FrecencyProvider>
+                                      </CommandProvider>
+                                    </DialogProvider>
+                                  </PromptStashProvider>
+                                </KeybindProvider>
+                              </LocalProvider>
+                            </ThemeProvider>
+                          </SyncProvider>
+                        </ProjectProvider>
                       </SDKProvider>
                     </TuiConfigProvider>
                   </RouteProvider>
@@ -260,6 +210,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   const kv = useKV()
   const command = useCommandDialog()
   const keybind = useKeybind()
+  const event = useEvent()
   const sdk = useSDK()
   const toast = useToast()
   const themeState = useTheme()
@@ -283,18 +234,18 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     route,
     routes,
     bump: () => setRouteRev((x) => x + 1),
+    event,
     sdk,
     sync,
     theme: themeState,
     toast,
     renderer,
   })
-  onCleanup(() => {
-    api.dispose()
-    ObservatoryServer.stop()
-  })
   const [ready, setReady] = createSignal(false)
-  TuiPluginRuntime.init(api)
+  TuiPluginRuntime.init({
+    api,
+    config: tuiConfig,
+  })
     .catch((error) => {
       console.error("Failed to load TUI plugins", error)
     })
@@ -303,7 +254,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     })
 
   useKeyboard((evt) => {
-    if (!Flag.SAHYACODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
+    if (!Flag.OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
     const sel = renderer.getSelection()
     if (!sel) return
 
@@ -348,31 +299,30 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     renderer.clearSelection()
   }
   const [terminalTitleEnabled, setTerminalTitleEnabled] = createSignal(kv.get("terminal_title_enabled", true))
-  const [voiceEnabled, setVoiceEnabled] = createSignal(kv.get("voice_enabled", false))
 
   // Update terminal window title based on current route and session
   createEffect(() => {
-    if (!terminalTitleEnabled() || Flag.SAHYACODE_DISABLE_TERMINAL_TITLE) return
+    if (!terminalTitleEnabled() || Flag.OPENCODE_DISABLE_TERMINAL_TITLE) return
 
     if (route.data.type === "home") {
-      renderer.setTerminalTitle("SahyaCode")
+      renderer.setTerminalTitle("OpenCode")
       return
     }
 
     if (route.data.type === "session") {
       const session = sync.session.get(route.data.sessionID)
       if (!session || SessionApi.isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle("SahyaCode")
+        renderer.setTerminalTitle("OpenCode")
         return
       }
 
       const title = session.title.length > 40 ? session.title.slice(0, 37) + "..." : session.title
-      renderer.setTerminalTitle(`SC | ${title}`)
+      renderer.setTerminalTitle(`OC | ${title}`)
       return
     }
 
     if (route.data.type === "plugin") {
-      renderer.setTerminalTitle(`SC | ${route.data.id}`)
+      renderer.setTerminalTitle(`OC | ${route.data.id}`)
     }
   })
 
@@ -390,7 +340,6 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
           })
         local.model.set({ providerID, modelID }, { recent: true })
       }
-      // Handle --session without --fork immediately (fork is handled in createEffect below)
       if (args.sessionID && !args.fork) {
         route.navigate({
           type: "session",
@@ -410,7 +359,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     if (match) {
       continued = true
       if (args.fork) {
-        sdk.client.session.fork({ sessionID: match }).then((result) => {
+        void sdk.client.session.fork({ sessionID: match }).then((result) => {
           if (result.data?.id) {
             route.navigate({ type: "session", sessionID: result.data.id })
           } else {
@@ -430,7 +379,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   createEffect(() => {
     if (forked || sync.status !== "complete" || !args.sessionID || !args.fork) return
     forked = true
-    sdk.client.session.fork({ sessionID: args.sessionID }).then((result) => {
+    void sdk.client.session.fork({ sessionID: args.sessionID }).then((result) => {
       if (result.data?.id) {
         route.navigate({ type: "session", sessionID: result.data.id })
       } else {
@@ -466,22 +415,6 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         dialog.replace(() => <DialogSessionList />)
       },
     },
-    ...(Flag.SAHYACODE_EXPERIMENTAL_WORKSPACES
-      ? [
-          {
-            title: "Manage workspaces",
-            value: "workspace.list",
-            category: "Workspace",
-            suggested: true,
-            slash: {
-              name: "workspaces",
-            },
-            onSelect: () => {
-              dialog.replace(() => <DialogWorkspaceList />)
-            },
-          },
-        ]
-      : []),
     {
       title: "New session",
       suggested: route.data.type === "session",
@@ -493,15 +426,8 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         aliases: ["clear"],
       },
       onSelect: () => {
-        const current = promptRef.current
-        // Don't require focus - if there's any text, preserve it
-        const currentPrompt = current?.current?.input ? current.current : undefined
-        const workspaceID =
-          route.data.type === "session" ? sync.session.get(route.data.sessionID)?.workspaceID : undefined
         route.navigate({
           type: "home",
-          initialPrompt: currentPrompt,
-          workspaceID,
         })
         dialog.clear()
       },
@@ -604,6 +530,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     {
       title: "Switch model variant",
       value: "variant.list",
+      keybind: "variant_list",
       category: "Agent",
       hidden: local.model.variant.list().length === 0,
       slash: {
@@ -635,6 +562,23 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
       category: "Provider",
     },
+    ...(sync.data.console_state.switchableOrgCount > 1
+      ? [
+          {
+            title: "Switch org",
+            value: "console.org.switch",
+            suggested: Boolean(sync.data.console_state.activeOrgName),
+            slash: {
+              name: "org",
+              aliases: ["orgs", "switch-org"],
+            },
+            onSelect: () => {
+              dialog.replace(() => <DialogConsoleOrg />)
+            },
+            category: "Provider",
+          },
+        ]
+      : []),
     {
       title: "View status",
       keybind: "status_view",
@@ -644,90 +588,6 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
       onSelect: () => {
         dialog.replace(() => <DialogStatus />)
-      },
-      category: "System",
-    },
-    {
-      title: "Check for updates",
-      value: "app.upgrade",
-      slash: {
-        name: "upgrade",
-      },
-      onSelect: () => {
-        dialog.clear()
-        toast.show({
-          variant: "info",
-          message: "Upgrading SahyaCode — this may take a moment...",
-          duration: 30000,
-        })
-        sdk.client.global.upgrade({})
-          .then((result) => {
-            if (result.error || !result.data?.success) {
-              const msg =
-                (result.data as any)?.error ||
-                (result.error instanceof Error ? result.error.message : (result.error != null ? String(result.error) : "")) ||
-                "Upgrade failed"
-              toast.show({ variant: "error", title: "Upgrade Failed", message: msg, duration: 8000 })
-              return
-            }
-            // Strip any 'v' prefix from version before adding our own, to avoid "vv2.14.8"
-            const ver = result.data.version.replace(/^v/, "")
-            toast.show({
-              variant: "success",
-              message: `✅ Upgraded to v${ver}! Please restart SahyaCode.`,
-              duration: 12000,
-            })
-          })
-          .catch((err) => {
-            toast.show({
-              variant: "error",
-              title: "Upgrade Failed",
-              message: err instanceof Error ? err.message : String(err),
-              duration: 8000,
-            })
-          })
-      },
-      category: "System",
-    },
-    {
-      title: "Open Observatory",
-      value: "app.observatory",
-      slash: {
-        name: "observe",
-        aliases: ["obs", "watch"],
-      },
-      onSelect: () => {
-        dialog.clear()
-        // Use the live path from the sync store — this is what the server actually
-        // reports as the active project directory (worktree or cwd).
-        // Fall back through sdk.directory → process.cwd() only if not yet synced.
-        let workDir: string =
-          sync.data.path.worktree ||
-          sync.data.path.directory ||
-          sdk.directory ||
-          process.cwd()
-        if (ObservatoryServer.isRunning()) {
-          const url = ObservatoryServer.getUrl()!
-          open(url).catch(() => {})
-          toast.show({ message: `Observatory already running: ${url}`, variant: "info", duration: 4000 })
-          return
-        }
-        ObservatoryServer.start(workDir)
-          .then((url) => {
-            open(url).catch(() => {})
-            toast.show({
-              message: `🔭 Live preview opened at ${url} — the browser will auto-reload as the LLM writes files.`,
-              variant: "success",
-              duration: 6000,
-            })
-          })
-          .catch((err) => {
-            toast.show({
-              message: `Observatory failed to start: ${err instanceof Error ? err.message : String(err)}`,
-              variant: "error",
-              duration: 5000,
-            })
-          })
       },
       category: "System",
     },
@@ -744,7 +604,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       category: "System",
     },
     {
-      title: "Toggle Theme Mode",
+      title: mode() === "dark" ? "Switch to light mode" : "Switch to dark mode",
       value: "theme.switch_mode",
       onSelect: (dialog) => {
         setMode(mode() === "dark" ? "light" : "dark")
@@ -753,7 +613,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       category: "System",
     },
     {
-      title: locked() ? "Unlock Theme Mode" : "Lock Theme Mode",
+      title: locked() ? "Unlock theme mode" : "Lock theme mode",
       value: "theme.mode.lock",
       onSelect: (dialog) => {
         if (locked()) unlock()
@@ -830,6 +690,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       keybind: "terminal_suspend",
       category: "System",
       hidden: true,
+      enabled: tuiConfig.keybinds?.terminal_suspend !== "none",
       onSelect: () => {
         process.once("SIGCONT", () => {
           renderer.resume()
@@ -874,49 +735,13 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         dialog.clear()
       },
     },
-    {
-      title: voiceEnabled() ? "Disable voice mode" : "Enable voice mode",
-      value: "voice.toggle",
-      category: "System",
-      slash: {
-        name: "voice",
-      },
-      onSelect: async (dialog) => {
-        const next = !voiceEnabled()
-        setVoiceEnabled(next)
-        kv.set("voice_enabled", next)
-        if (next) {
-          const availability = await Voice.checkAvailability()
-          if (!availability.stt && !availability.tts) {
-            toast.show({
-              variant: "warning",
-              message: "Voice mode enabled but no STT/TTS capabilities detected. Install sox (`brew install sox`) or set OPENAI_API_KEY.",
-              duration: 5000,
-            })
-          } else {
-            toast.show({
-              variant: "success",
-              message: `Voice mode enabled. STT: ${availability.stt ? "✓" : "✗"}, TTS: ${availability.tts ? "✓" : "✗"}`,
-              duration: 3000,
-            })
-          }
-        } else {
-          toast.show({
-            variant: "info",
-            message: "Voice mode disabled",
-            duration: 2000,
-          })
-        }
-        dialog.clear()
-      },
-    },
   ])
 
-  sdk.event.on(TuiEvent.CommandExecute.type, (evt) => {
+  event.on(TuiEvent.CommandExecute.type, (evt) => {
     command.trigger(evt.properties.command)
   })
 
-  sdk.event.on(TuiEvent.ToastShow.type, (evt) => {
+  event.on(TuiEvent.ToastShow.type, (evt) => {
     toast.show({
       title: evt.properties.title,
       message: evt.properties.message,
@@ -925,14 +750,14 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     })
   })
 
-  sdk.event.on(TuiEvent.SessionSelect.type, (evt) => {
+  event.on(TuiEvent.SessionSelect.type, (evt) => {
     route.navigate({
       type: "session",
       sessionID: evt.properties.sessionID,
     })
   })
 
-  sdk.event.on("session.deleted", (evt) => {
+  event.on("session.deleted", (evt) => {
     if (route.data.type === "session" && route.data.sessionID === evt.properties.info.id) {
       route.navigate({ type: "home" })
       toast.show({
@@ -942,7 +767,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     }
   })
 
-  sdk.event.on("session.error", (evt) => {
+  event.on("session.error", (evt) => {
     const error = evt.properties.error
     if (error && typeof error === "object" && error.name === "MessageAbortedError") return
     const message = errorMessage(error)
@@ -954,24 +779,16 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     })
   })
 
-  sdk.event.on("installation.update-available", async (evt) => {
+  event.on("installation.update-available", async (evt) => {
     const version = evt.properties.version
 
     const skipped = kv.get("skipped_version")
     if (skipped && !semver.gt(version, skipped)) return
 
-    // Show toast notification first to make it visible
-    toast.show({
-      variant: "info",
-      title: "Update Available",
-      message: `SahyaCode ${version.startsWith("v") ? version : `v${version}`} is available. Press Ctrl+P and type /upgrade to update.`,
-      duration: 10000,
-    })
-
     const choice = await DialogConfirm.show(
       dialog,
       `Update Available`,
-      `A new release ${version.startsWith("v") ? version : `v${version}`} is available. Would you like to update now?`,
+      `A new release v${version} is available. Would you like to update now?`,
       "skip",
     )
 
@@ -984,7 +801,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
     toast.show({
       variant: "info",
-      message: `Updating to ${version.startsWith("v") ? version : `v${version}`}...`,
+      message: `Updating to v${version}...`,
       duration: 30000,
     })
 
@@ -1003,10 +820,10 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     await DialogAlert.show(
       dialog,
       "Update Complete",
-      `Successfully updated to SahyaCode v${result.data.version}. Please restart the application.`,
+      `Successfully updated to OpenCode v${result.data.version}. Please restart the application.`,
     )
 
-    exit()
+    void exit()
   })
 
   const plugin = createMemo(() => {
@@ -1023,16 +840,16 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       height={dimensions().height}
       backgroundColor={theme.background}
       onMouseDown={(evt) => {
-        if (!Flag.SAHYACODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
+        if (!Flag.OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
         if (evt.button !== MouseButton.RIGHT) return
 
         if (!Selection.copy(renderer, toast)) return
         evt.preventDefault()
         evt.stopPropagation()
       }}
-      onMouseUp={Flag.SAHYACODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT ? undefined : () => Selection.copy(renderer, toast)}
+      onMouseUp={Flag.OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT ? undefined : () => Selection.copy(renderer, toast)}
     >
-      <Show when={Flag.SAHYACODE_SHOW_TTFD}>
+      <Show when={Flag.OPENCODE_SHOW_TTFD}>
         <TimeToFirstDraw />
       </Show>
       <Show when={ready()}>
@@ -1042,9 +859,6 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
           </Match>
           <Match when={route.data.type === "session"}>
             <Session />
-          </Match>
-          <Match when={route.data.type === "observatory"}>
-            <ObservatoryRoute />
           </Match>
         </Switch>
       </Show>

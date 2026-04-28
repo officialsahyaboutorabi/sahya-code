@@ -145,6 +145,7 @@ export function tui(input: {
 
     crashLog("tui_step", { step: "before_render" })
     await render(() => {
+      crashLog("tui_step", { step: "render_callback" })
       return (
         <ErrorBoundary
           fallback={(error, reset) => {
@@ -152,6 +153,7 @@ export function tui(input: {
             return <ErrorComponent error={error} reset={reset} onBeforeExit={onBeforeExit} onExit={onExit} mode={mode} />
           }}
         >
+          {crashLog("tui_step", { step: "error_boundary_ok" }), null}
           <ArgsProvider {...input.args}>
             <ExitProvider onBeforeExit={onBeforeExit} onExit={onExit}>
               <KVProvider>
@@ -209,10 +211,12 @@ export function tui(input: {
         </ErrorBoundary>
       )
     }, renderer)
+    crashLog("tui_step", { step: "render_done" })
   })
 }
 
 function App(props: { onSnapshot?: () => Promise<string[]> }) {
+  crashLog("tui_step", { step: "app_function" })
   const tuiConfig = useTuiConfig()
   const route = useRoute()
   const dimensions = useTerminalDimensions()

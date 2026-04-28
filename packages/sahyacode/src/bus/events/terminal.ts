@@ -1,19 +1,19 @@
-import z from "zod"
+import { Schema } from "effect"
 import { BusEvent } from "@/bus/bus-event"
 
 export namespace TerminalEvent {
-  const StreamChunk = z.object({
-    type: z.enum(["stdout", "stderr", "exit"]),
-    data: z.string(),
-    timestamp: z.number(),
-    pid: z.number().optional(),
+  const StreamChunk = Schema.Struct({
+    type: Schema.Literals(["stdout", "stderr", "exit"]),
+    data: Schema.String,
+    timestamp: Schema.Number,
+    pid: Schema.optional(Schema.Number),
   })
 
   export const Output = BusEvent.define(
     "terminal.output",
-    z.object({
-      sessionID: z.string(),
-      toolCallID: z.string(),
+    Schema.Struct({
+      sessionID: Schema.String,
+      toolCallID: Schema.String,
       chunk: StreamChunk,
     }),
   )

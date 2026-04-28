@@ -1,6 +1,13 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js"
 import { useTheme } from "../context/theme"
 import { Spinner } from "./spinner"
+import fs from "fs"
+
+const CRASH_LOG = `${process.env.HOME || process.env.USERPROFILE || "/tmp"}/.sahyacode/crash.log`
+function crashLog(label: string, data: Record<string, unknown>) {
+  const line = JSON.stringify({ time: new Date().toISOString(), label, ...data }) + "\n"
+  try { fs.appendFileSync(CRASH_LOG, line) } catch {}
+}
 
 export function StartupLoading(props: { ready: () => boolean }) {
   const theme = useTheme().theme
@@ -11,6 +18,9 @@ export function StartupLoading(props: { ready: () => boolean }) {
   let stamp = 0
 
   createEffect(() => {
+    if (show()) {
+      crashLog("startup_loading", { visible: true, text: text(), ready: props.ready() })
+    }
     if (props.ready()) {
       if (wait) {
         clearTimeout(wait)

@@ -3,6 +3,8 @@ import { tui } from "./app"
 import { Rpc } from "@/util"
 import { type rpc } from "./worker"
 import path from "path"
+import os from "os"
+import fs from "fs"
 import { fileURLToPath } from "url"
 import { UI } from "@/cli/ui"
 import { Log } from "@/util"
@@ -22,6 +24,16 @@ import {
   sanitizedProcessEnv,
 } from "@opencode-ai/core/util/opencode-process"
 import { validateSession } from "./validate-session"
+
+const CRASH_LOG = path.join(os.homedir(), ".sahyacode", "crash.log")
+fs.mkdirSync(path.dirname(CRASH_LOG), { recursive: true })
+
+function crashLog(label: string, data: Record<string, unknown>) {
+  const line = JSON.stringify({ time: new Date().toISOString(), label, ...data }) + "\n"
+  try {
+    fs.appendFileSync(CRASH_LOG, line)
+  } catch {}
+}
 
 declare global {
   const SAHYACODE_WORKER_PATH: string
@@ -129,10 +141,13 @@ export const TuiThreadCommand = cmd({
         ? Filesystem.resolve(path.isAbsolute(args.project) ? args.project : path.join(root, args.project))
         : Filesystem.resolve(process.cwd())
       const file = await target()
+      crashLog("startup", { workerPath: String(file), cwd: next })
+      process.stderr.write(`Crash log: ${CRASH_LOG}${os.EOL}`)
       try {
         process.chdir(next)
       } catch {
         UI.error("Failed to change directory to " + next)
+        crashLog("startup", { error: "Failed to change directory to " + next })
         return
       }
       const cwd = Filesystem.resolve(process.cwd())
@@ -141,17 +156,27 @@ export const TuiThreadCommand = cmd({
         [OPENCODE_RUN_ID]: ensureRunID(),
       })
 
-      const worker = new Worker(file, {
-        env,
-      })
+      let worker: Worker
+      try {
+        worker = new Worker(file, { env })
+      } catch (e) {
+        const msg = errorMessage(e)
+        crashLog("worker_spawn", { error: msg, file: String(file) })
+        UI.error("Failed to start worker: " + msg)
+        UI.error("Crash log: " + CRASH_LOG)
+        process.exitCode = 1
+        return
+      }
       worker.onerror = (e) => {
-        Log.Default.error("thread error", {
+        const data = {
           message: e.message,
           filename: e.filename,
           lineno: e.lineno,
           colno: e.colno,
-          error: e.error,
-        })
+          error: String(e.error),
+        }
+        crashLog("worker_error", data)
+        Log.Default.error("thread error", data)
       }
 
       const client = Rpc.client<typeof rpc>(worker)
@@ -246,6 +271,9 @@ export const TuiThreadCommand = cmd({
             fork: args.fork,
           },
         })
+      } catch (e) {
+        crashLog("tui_crash", { error: errorMessage(e) })
+        throw e
       } finally {
         await stop()
       }

@@ -1,4 +1,4 @@
-import { Effect, Layer, Scope, Context } from "effect"
+import { Effect, Layer, Scope, Context, Schema } from "effect"
 import { InstanceState } from "@/effect"
 import { makeRuntime } from "@/effect/run-service"
 import type { InstanceContext } from "@/project/instance"
@@ -7,7 +7,6 @@ import { BusEvent } from "@/bus/bus-event"
 import { Log } from "../util/log"
 import { FileWatcher } from "../file/watcher"
 import { Instance } from "../project/instance"
-import z from "zod"
 import type { Parser } from "./parser"
 import type { DependencyGraph } from "./graph"
 import type { SearchIndex } from "./search"
@@ -19,16 +18,16 @@ export namespace CodeIntelligence {
   export const Event = {
     Indexed: BusEvent.define(
       "code-intelligence.indexed",
-      z.object({
-        file: z.string(),
-        symbols: z.number(),
+      Schema.Struct({
+        file: Schema.String,
+        symbols: Schema.Number,
       }),
     ),
     GraphUpdated: BusEvent.define(
       "code-intelligence.graph-updated",
-      z.object({
-        nodes: z.number(),
-        edges: z.number(),
+      Schema.Struct({
+        nodes: Schema.Number,
+        edges: Schema.Number,
       }),
     ),
   }

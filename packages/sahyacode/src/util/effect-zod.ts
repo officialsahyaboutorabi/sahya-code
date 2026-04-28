@@ -19,6 +19,8 @@ const walkCache = new WeakMap<SchemaAST.AST, z.ZodTypeAny>()
 const EMPTY_PARSE_OPTIONS = {} as SchemaAST.ParseOptions
 
 export function zod<S extends Schema.Top>(schema: S): z.ZodType<Schema.Schema.Type<S>> {
+  if (isZodType(schema)) return schema as z.ZodType<Schema.Schema.Type<S>>
+  if (!schema.ast) throw new TypeError("zod() expected an Effect Schema with .ast, received: " + String(schema))
   return walk(schema.ast) as z.ZodType<Schema.Schema.Type<S>>
 }
 
@@ -41,6 +43,7 @@ export function zod<S extends Schema.Top>(schema: S): z.ZodType<Schema.Schema.Ty
  * post-`.omit()` shape should cast `c.req.valid(...)` to the expected type.
  */
 export function zodObject<S extends Schema.Top>(schema: S): z.ZodObject<any> {
+  if (isZodType(schema)) return schema as unknown as z.ZodObject<any>
   const derived: z.ZodTypeAny = "zod" in schema && isZodType(schema.zod) ? schema.zod : walk(schema.ast)
   return derived as unknown as z.ZodObject<any>
 }
@@ -60,6 +63,11 @@ export function toJsonSchema<S extends Schema.Top>(schema: S) {
 }
 
 function walk(ast: SchemaAST.AST): z.ZodTypeAny {
+  if (!ast) {
+    const err = new Error("walk() received undefined AST")
+    console.error("effect-zod: undefined AST", err.stack)
+    throw err
+  }
   const cached = walkCache.get(ast)
   if (cached) return cached
   const result = walkUncached(ast)

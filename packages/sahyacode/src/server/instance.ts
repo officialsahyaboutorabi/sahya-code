@@ -29,6 +29,18 @@ import { errorHandler } from "./middleware"
 
 const log = Log.create({ service: "server" })
 
+function safeResolver(name: string, schema: any) {
+  if (!schema) {
+    log.error("resolver schema is undefined", { name })
+    throw new Error(`Schema ${name} is undefined`)
+  }
+  if (!("~standard" in schema)) {
+    log.error("resolver schema missing ~standard", { name, type: typeof schema, constructor: schema?.constructor?.name })
+    throw new Error(`Schema ${name} missing ~standard`)
+  }
+  return resolver(schema)
+}
+
 const embeddedUIPromise = Flag.SAHYACODE_DISABLE_EMBEDDED_WEB_UI
   ? Promise.resolve(null)
   : // @ts-expect-error - generated file at build time
@@ -66,7 +78,7 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "Instance disposed",
             content: {
               "application/json": {
-                schema: resolver(z.boolean()),
+                schema: safeResolver("z.boolean", z.boolean()),
               },
             },
           },
@@ -88,7 +100,8 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "Path",
             content: {
               "application/json": {
-                schema: resolver(
+                schema: safeResolver(
+                  "z.object.path",
                   z
                     .object({
                       home: z.string(),
@@ -127,7 +140,7 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "VCS info",
             content: {
               "application/json": {
-                schema: resolver(Vcs.Info),
+                schema: safeResolver("Vcs.Info.zod", Vcs.Info.zod),
               },
             },
           },
@@ -151,7 +164,7 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "List of commands",
             content: {
               "application/json": {
-                schema: resolver(Command.Info.array()),
+                schema: safeResolver("Command.Info.zod.array", Command.Info.zod.array()),
               },
             },
           },
@@ -173,7 +186,7 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "List of agents",
             content: {
               "application/json": {
-                schema: resolver(Agent.Info.array()),
+                schema: safeResolver("Agent.Info.zod.array", Agent.Info.zod.array()),
               },
             },
           },
@@ -195,7 +208,7 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "List of skills",
             content: {
               "application/json": {
-                schema: resolver(Skill.Info.array()),
+                schema: safeResolver("Skill.Info.zod.array", Skill.Info.zod.array()),
               },
             },
           },
@@ -217,7 +230,7 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "LSP server status",
             content: {
               "application/json": {
-                schema: resolver(LSP.Status.array()),
+                schema: safeResolver("LSP.Status.zod.array", LSP.Status.zod.array()),
               },
             },
           },
@@ -238,7 +251,7 @@ export const InstanceRoutes = (app?: Hono) =>
             description: "Formatter status",
             content: {
               "application/json": {
-                schema: resolver(Format.Status.array()),
+                schema: safeResolver("Format.Status.zod.array", Format.Status.zod.array()),
               },
             },
           },

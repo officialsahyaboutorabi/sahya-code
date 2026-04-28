@@ -1,7 +1,7 @@
 import { Config } from "@/config"
 import { Provider } from "@/provider"
 import * as InstanceState from "@/effect/instance-state"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "./auth"
 import { markInstanceForDisposal } from "./lifecycle"
@@ -13,7 +13,7 @@ export const ConfigApi = HttpApi.make("config")
     HttpApiGroup.make("config")
       .add(
         HttpApiEndpoint.get("get", root, {
-          success: Config.Info,
+          success: Schema.Any,
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "config.get",
@@ -22,8 +22,8 @@ export const ConfigApi = HttpApi.make("config")
           }),
         ),
         HttpApiEndpoint.patch("update", root, {
-          payload: Config.Info,
-          success: Config.Info,
+          payload: Schema.Any,
+          success: Schema.Any,
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "config.update",
@@ -67,7 +67,7 @@ export const configHandlers = Layer.unwrap(
     })
 
     const update = Effect.fn("ConfigHttpApi.update")(function* (ctx) {
-      const payload = Config.Info.zod.parse(ctx.payload)
+      const payload = Config.Info.parse(ctx.payload)
       yield* configSvc.update(payload, { dispose: false })
       yield* markInstanceForDisposal(yield* InstanceState.context)
       return payload

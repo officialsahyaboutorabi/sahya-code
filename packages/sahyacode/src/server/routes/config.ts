@@ -20,7 +20,7 @@ export const ConfigRoutes = lazy(() =>
             description: "Get config info",
             content: {
               "application/json": {
-                schema: resolver(Config.Info.zod),
+                schema: resolver(Config.Info),
               },
             },
           },
@@ -43,14 +43,14 @@ export const ConfigRoutes = lazy(() =>
             description: "Successfully updated config",
             content: {
               "application/json": {
-                schema: resolver(Config.Info.zod),
+                schema: resolver(Config.Info),
               },
             },
           },
           ...errors(400),
         },
       }),
-      validator("json", Config.Info.zod),
+      validator("json", Config.Info),
       async (c) =>
         jsonRequest("ConfigRoutes.update", c, function* () {
           const config = c.req.valid("json")

@@ -1171,6 +1171,19 @@ export namespace Config {
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "sahyacode.jsonc"))),
           )
 
+          // Fallback: also load from old opencode config dir (lower priority)
+          const oldConfigDir = Global.Path.config.replace(/sahyacode$/, "opencode")
+          if (oldConfigDir !== Global.Path.config && existsSync(oldConfigDir)) {
+            result = pipe(
+              result,
+              mergeDeep(yield* loadFile(path.join(oldConfigDir, "config.json"))),
+              mergeDeep(yield* loadFile(path.join(oldConfigDir, "opencode.json"))),
+              mergeDeep(yield* loadFile(path.join(oldConfigDir, "opencode.jsonc"))),
+              mergeDeep(yield* loadFile(path.join(oldConfigDir, "sahyacode.json"))),
+              mergeDeep(yield* loadFile(path.join(oldConfigDir, "sahyacode.jsonc"))),
+            )
+          }
+
           const legacy = path.join(Global.Path.config, "config")
           if (existsSync(legacy)) {
             yield* Effect.promise(() =>
@@ -1518,3 +1531,10 @@ export namespace Config {
     return runPromise((svc) => svc.waitForDependencies())
   }
 }
+
+// Bun bundler flattens namespace imports (e.g. `Config.Service`) to direct
+// property access on the module object (`exports_config.Service`). Without
+// top-level aliases the compiled output lacks these properties and runtime
+// access throws.
+export const Info = Config.Info
+export const Service = Config.Service

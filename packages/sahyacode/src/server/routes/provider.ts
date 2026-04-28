@@ -150,7 +150,7 @@ export const ProviderRoutes = lazy(() =>
             description: "Authorization URL and method",
             content: {
               "application/json": {
-                schema: resolver(ProviderAuth.Authorization.optional()),
+                schema: resolver(ProviderAuth.Authorization.zod.optional()),
               },
             },
           },

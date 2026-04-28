@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { describeRoute, resolver, validator } from "hono-openapi"
 import z from "zod"
 import { Workspace } from "../../control-plane/workspace"
+import { WorkspaceID } from "../../control-plane/schema"
 import { Instance } from "../../project/instance"
 import { errors } from "../error"
 import { lazy } from "../../util/lazy"
@@ -19,7 +20,7 @@ export const WorkspaceRoutes = lazy(() =>
             description: "Workspace created",
             content: {
               "application/json": {
-                schema: resolver(Workspace.Info),
+                schema: resolver(Workspace.Info.zod),
               },
             },
           },
@@ -52,7 +53,7 @@ export const WorkspaceRoutes = lazy(() =>
             description: "Workspaces",
             content: {
               "application/json": {
-                schema: resolver(z.array(Workspace.Info)),
+                schema: resolver(z.array(Workspace.Info.zod)),
               },
             },
           },
@@ -73,7 +74,7 @@ export const WorkspaceRoutes = lazy(() =>
             description: "Workspace removed",
             content: {
               "application/json": {
-                schema: resolver(Workspace.Info.optional()),
+                schema: resolver(Workspace.Info.zod.optional()),
               },
             },
           },
@@ -83,7 +84,7 @@ export const WorkspaceRoutes = lazy(() =>
       validator(
         "param",
         z.object({
-          id: Workspace.Info.shape.id,
+          id: WorkspaceID.zod,
         }),
       ),
       async (c) => {

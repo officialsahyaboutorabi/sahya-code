@@ -61,6 +61,13 @@ import { TuiConfigProvider, useTuiConfig } from "./context/tui-config"
 import { TuiConfig } from "@/cli/cmd/tui/config/tui"
 import { createTuiApi, TuiPluginRuntime, type RouteMap } from "./plugin"
 import { FormatError, FormatUnknownError } from "@/cli/error"
+import fs from "fs"
+
+const CRASH_LOG = `${process.env.HOME || process.env.USERPROFILE || "/tmp"}/.sahyacode/crash.log`
+function crashLog(label: string, data: Record<string, unknown>) {
+  const line = JSON.stringify({ time: new Date().toISOString(), label, ...data }) + "\n"
+  try { fs.appendFileSync(CRASH_LOG, line) } catch {}
+}
 
 import type { EventSource } from "./context/sdk"
 import { DialogVariant } from "./component/dialog-variant"
@@ -130,15 +137,20 @@ export function tui(input: {
       await TuiPluginRuntime.dispose()
     }
 
+    crashLog("tui_step", { step: "create_renderer" })
     const renderer = await createCliRenderer(rendererConfig(input.config))
+    crashLog("tui_step", { step: "renderer_created", mode: renderer.mode })
     const mode = (await renderer.waitForThemeMode(1000)) ?? "dark"
+    crashLog("tui_step", { step: "theme_mode", mode })
 
+    crashLog("tui_step", { step: "before_render" })
     await render(() => {
       return (
         <ErrorBoundary
-          fallback={(error, reset) => (
-            <ErrorComponent error={error} reset={reset} onBeforeExit={onBeforeExit} onExit={onExit} mode={mode} />
-          )}
+          fallback={(error, reset) => {
+            crashLog("render_error", { error: String(error) })
+            return <ErrorComponent error={error} reset={reset} onBeforeExit={onBeforeExit} onExit={onExit} mode={mode} />
+          }}
         >
           <ArgsProvider {...input.args}>
             <ExitProvider onBeforeExit={onBeforeExit} onExit={onExit}>
@@ -328,6 +340,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
   const args = useArgs()
   onMount(() => {
+    crashLog("tui_step", { step: "app_mounted" })
     batch(() => {
       if (args.agent) local.agent.set(args.agent)
       if (args.model) {

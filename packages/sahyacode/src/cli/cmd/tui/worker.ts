@@ -12,8 +12,16 @@ import { writeHeapSnapshot } from "node:v8"
 import { Heap } from "@/cli/heap"
 import { AppRuntime } from "@/effect/app-runtime"
 import { ensureProcessMetadata } from "@opencode-ai/core/util/opencode-process"
+import fs from "fs"
+
+const CRASH_LOG = `${process.env.HOME || process.env.USERPROFILE || "/tmp"}/.sahyacode/crash.log`
+function crashLog(label: string, data: Record<string, unknown>) {
+  const line = JSON.stringify({ time: new Date().toISOString(), label, ...data }) + "\n"
+  try { fs.appendFileSync(CRASH_LOG, line) } catch {}
+}
 
 ensureProcessMetadata("worker")
+crashLog("worker", { step: "metadata_ok" })
 
 await Log.init({
   print: process.argv.includes("--print-logs"),
@@ -25,6 +33,7 @@ await Log.init({
 })
 
 Heap.start()
+crashLog("worker", { step: "heap_started" })
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -94,7 +103,9 @@ export const rpc = {
   },
 }
 
+crashLog("worker", { step: "before_rpc_listen" })
 Rpc.listen(rpc)
+crashLog("worker", { step: "rpc_listening" })
 
 function getAuthorizationHeader(): string | undefined {
   const password = Flag.SAHYACODE_SERVER_PASSWORD

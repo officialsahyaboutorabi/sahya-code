@@ -1,4 +1,4 @@
-import { createContext, Show, useContext, type ParentProps } from "solid-js"
+import { createContext, Show, useContext, type ParentProps, createEffect, on } from "solid-js"
 import fs from "fs"
 
 const CRASH_LOG = `${process.env.HOME || process.env.USERPROFILE || "/tmp"}/.sahyacode/crash.log`
@@ -16,18 +16,28 @@ export function createSimpleContext<T, Props extends Record<string, any>>(input:
   return {
     provider: (props: ParentProps<Props>) => {
       const init = input.init(props)
-      const ready = init.ready
-      if (ready === false) {
+      const ready = () => init.ready
+      if (ready() === false) {
         crashLog("provider_blocked", { name: input.name })
         setTimeout(() => {
-          if (init.ready === false) {
+          if (ready() === false) {
             crashLog("provider_still_blocked", { name: input.name })
           }
         }, 5000)
       }
+      createEffect(
+        on(
+          ready,
+          (r, was) => {
+            if (was === false && r !== false) {
+              crashLog("provider_ready", { name: input.name, ready: r })
+            }
+          },
+        ),
+      )
       return (
         // @ts-expect-error
-        <Show when={ready === undefined || ready === true}>
+        <Show when={true}>
           <ctx.Provider value={init}>{props.children}</ctx.Provider>
         </Show>
       )
